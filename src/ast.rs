@@ -62,6 +62,6 @@ pub trait Visitor {
 #[derive(Debug)]
 pub struct Attr {
     pub id: Id,
-    pub ident: Option<Spur>,
+    pub ident: Spur,
     pub args: Vec<Expr>,
 }

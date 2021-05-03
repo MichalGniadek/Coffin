@@ -1,13 +1,5 @@
-use codespan_reporting::{
-    files::SimpleFile,
-    term::{
-        self,
-        termcolor::{ColorChoice, StandardStream},
-        Config,
-    },
-};
 use coffin2::*;
-use std::{fs, path::PathBuf, process::exit};
+use std::{path::PathBuf, process::exit};
 use structopt::StructOpt;
 
 /// Coffin compiler
@@ -35,13 +27,7 @@ fn main() {
     let spirv = match compile_file(&opt.input) {
         Ok(s) => s,
         Err(err) => {
-            let file = SimpleFile::new(
-                opt.input.file_name().unwrap().to_str().unwrap().to_string(),
-                fs::read_to_string(opt.input).unwrap_or("".to_string()),
-            );
-            let writer = StandardStream::stderr(ColorChoice::Always);
-            let config = Config::default();
-            term::emit(&mut writer.lock(), &config, &file, &err.report()).unwrap();
+            show_err(&opt.input, err);
             exit(1);
         }
     };

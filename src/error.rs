@@ -1,6 +1,6 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use logos::Span;
-use std::{io};
+use std::io;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CoffinError {
@@ -40,4 +40,6 @@ pub enum ParserErrorKind {
     AttributeArgumentMustBeAnInt,
     #[error("Attribute must be an identifier.")]
     AttributeMustBeAnIdentifier,
+    #[error("Missing attribute.")]
+    MissingAttribute,
 }

@@ -1,5 +1,4 @@
-#[set(0), binding(0), readonly] img: image2d
-// 
+#[set(0), binding(+2), readonly] img: image2d
 // #[compute(8, 8, 1)]
 // fun main(id: uint3){
 //     spirv(99, img, int2(id.xy), float4{x:1, y:1, z:0, w:1})

@@ -5,6 +5,7 @@ mod parser;
 mod pretty_print;
 
 use assembler::{Assembler, DisassembleOptions};
+use codespan_reporting::{files::SimpleFile, term::{self, Config, termcolor::{ColorChoice, StandardStream}}};
 use error::CoffinError;
 use lexer::Token;
 use logos::Logos;
@@ -14,12 +15,24 @@ use spirv_tools::{
 };
 use std::{fs, path::PathBuf};
 
+pub fn show_err(path: &PathBuf, err: CoffinError) {
+    let file = SimpleFile::new(
+        path.to_str().unwrap(),
+        fs::read_to_string(path).unwrap_or("".to_string()),
+    );
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let config = Config::default();
+    term::emit(&mut writer.lock(), &config, &file, &err.report()).unwrap();
+}
+
 pub fn compile_file(path: &PathBuf) -> Result<Vec<u32>, CoffinError> {
     let code = fs::read_to_string(path)?;
     let lexer = Token::lexer(&code);
     let (_ast, errors) = parser::parse(lexer);
     let _print = pretty_print::PrettyPrint::new();
-    println!("{:?}", errors);
+    for err in errors{
+        show_err(path, err.into());
+    }
     // println!(
     //     "{}",
     //     pretty_print::PrettyPrint::new().visit_expr(&ast.temp_root)

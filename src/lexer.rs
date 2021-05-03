@@ -100,24 +100,3 @@ pub enum Token {
     #[regex(r"[ \r\n\t\f]+", logos::skip)]
     Poisoned,
 }
-
-impl Token {
-    pub fn check_infix_binding_power(&self, min_binding_power: u8) -> Option<u8> {
-        const LEFT: u8 = 0;
-        const RIGHT: u8 = 1;
-        let (binding_power, assoc) = match self {
-            Token::Equal => (5, RIGHT),
-            Token::Plus | Token::Minus => (10, LEFT),
-            Token::Star | Token::Slash | Token::Percent => (20, LEFT),
-            Token::DoubleStar => (30, RIGHT),
-            Token::LeftParen | Token::LeftBracket | Token::Dot => (60, LEFT),
-            Token::LeftBrace => (250, LEFT),
-            _ => return None,
-        };
-        if binding_power + assoc > min_binding_power {
-            Some(binding_power)
-        } else {
-            None
-        }
-    }
-}

@@ -21,7 +21,7 @@ pub enum Expr {
     Identifier(Id, Spur),
     Float(Id, f32),
     Int(Id, i32),
-
+    Block(Id, Vec<Expr>),
     Error(Id),
 }
 
@@ -46,6 +46,7 @@ pub trait Visitor {
             Expr::Identifier(id, identifier) => self.identifier(*id, *identifier),
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
+            Expr::Block(id, exprs) => self.block(*id, exprs),
             Expr::Error(id) => self.error(*id),
         }
     }
@@ -55,7 +56,7 @@ pub trait Visitor {
     fn identifier(&mut self, id: Id, identifier: Spur) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
-
+    fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
     fn error(&mut self, id: Id) -> Self::Out;
 }
 

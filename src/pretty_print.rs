@@ -1,4 +1,4 @@
-use crate::ast::{self, Visitor};
+use crate::{ast::{self, Visitor}, error::ParserErrorKind};
 use ast::{BinOpKind, Expr, Id};
 use lasso::Spur;
 use logos::Span;
@@ -87,7 +87,7 @@ impl Visitor for PrettyPrint {
         )
     }
 
-    fn error(&mut self, id: Id) -> Self::Out {
-        format!("{:?} Error", self.spans[id.0 as usize])
+    fn error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out {
+        format!("{:?} Error {:?}", self.spans[id.0 as usize], kind)
     }
 }

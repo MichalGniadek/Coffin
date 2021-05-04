@@ -1,5 +1,6 @@
 use crate::{
     ast::{BinOpKind, Expr, Id, Visitor},
+    error::ParserErrorKind,
     lexer::Token,
     pretty_print::PrettyPrint,
 };
@@ -30,7 +31,7 @@ struct Parser<'a> {
 impl<'a> Parser<'a> {
     #![allow(dead_code)]
 
-    fn span(&mut self) -> Span{
+    fn span(&mut self) -> Span {
         self.lexer.peek().map_or(0..0, |(_, span)| span.clone())
     }
 
@@ -85,8 +86,9 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::Int(i)) => Expr::Int(self.consume(), i),
             Some(Token::LeftBrace) => self.parse_block(),
-            Some(Token::RightParen) | Some(Token::Comma) | None => Expr::Error(self.err_consume()),
-            Some(_) => Expr::Error(self.err_consume()),
+            Some(_) | None => {
+                Expr::Error(self.err_consume(), ParserErrorKind::TokenIsntAPrefixToken)
+            }
         }
     }
 
@@ -102,7 +104,7 @@ impl<'a> Parser<'a> {
 
             let expr = self.parse_expr(0);
 
-            if let Expr::Error(_) = expr {
+            if let Expr::Error(_, _) = expr {
                 if let Some(Token::RightBrace) = self.peek() {
                     // Expr is an error but it synced to the right brace
                     // so add it to the list and return a Block
@@ -110,7 +112,7 @@ impl<'a> Parser<'a> {
                     break;
                 } else {
                     // Expr is an error and we can't sync here so return an error
-                    return Expr::Error(id);
+                    return expr;
                 }
             } else {
                 // Expr is not an error so just add it to the list

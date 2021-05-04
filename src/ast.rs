@@ -2,6 +2,8 @@ use lasso::Spur;
 use logos::Span;
 use std::num::NonZeroU32;
 
+use crate::error::ParserErrorKind;
+
 #[derive(Debug)]
 pub struct UntypedAst {
     // TODO
@@ -22,7 +24,7 @@ pub enum Expr {
     Float(Id, f32),
     Int(Id, i32),
     Block(Id, Vec<Expr>),
-    Error(Id),
+    Error(Id, ParserErrorKind),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -47,7 +49,7 @@ pub trait Visitor {
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
             Expr::Block(id, exprs) => self.block(*id, exprs),
-            Expr::Error(id) => self.error(*id),
+            Expr::Error(id, kind) => self.error(*id, kind),
         }
     }
 
@@ -57,7 +59,7 @@ pub trait Visitor {
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
-    fn error(&mut self, id: Id) -> Self::Out;
+    fn error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out;
 }
 
 #[derive(Debug)]

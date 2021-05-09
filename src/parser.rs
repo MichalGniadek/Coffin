@@ -1,5 +1,5 @@
 use crate::{
-    ast::{BinOpKind, Expr, Id, Visitor},
+    ast::{BinOpKind, Expr, Id, Item, ItemName, Visitor},
     error::ParserErrorKind,
     lexer::Token,
     pretty_print::PrettyPrint,
@@ -14,11 +14,15 @@ pub fn parse<'a>(lexer: Lexer<'a, Token>) {
         spans: vec![],
     };
 
-    let expr = parser.parse_expr(0);
-
+    let fun = parser.parse_fun();
     println!(
         "{}",
-        PrettyPrint::new(parser.spans.clone()).visit_expr(&expr.expr()),
+        PrettyPrint::new(parser.spans.clone()).visit_item(&fun)
+    );
+    let fun = parser.parse_fun();
+    println!(
+        "{}",
+        PrettyPrint::new(parser.spans.clone()).visit_item(&fun)
     );
 }
 
@@ -29,9 +33,11 @@ struct Parser<'a> {
 }
 
 type ParserResult = Result<Expr, Expr>;
+
 trait ParserResultTrait {
     fn expr(self) -> Expr;
 }
+
 impl ParserResultTrait for ParserResult {
     fn expr(self) -> Expr {
         match self {
@@ -42,6 +48,9 @@ impl ParserResultTrait for ParserResult {
 }
 
 impl<'a> Parser<'a> {
+    const ITEM_SYNC: [Token; 1] = [Token::Fun];
+    const EXPR_SYNC: [Token; 2] = [Token::RightBrace, Token::Fun];
+
     fn span(&mut self) -> Span {
         self.lexer.peek().map_or(0..0, |(_, span)| span.clone())
     }
@@ -56,13 +65,11 @@ impl<'a> Parser<'a> {
         id
     }
 
-    fn err_consume(&mut self) -> Id {
-        const SYNC_TOKENS: [Token; 1] = [Token::RightBrace];
-
+    fn err_consume(&mut self, tokens: &[Token]) -> Id {
         let mut fin_span = self.span();
 
         while let Some((token, span)) = self.lexer.peek() {
-            if !SYNC_TOKENS.contains(token) {
+            if !tokens.contains(token) {
                 fin_span = fin_span.start..span.end;
                 self.lexer.next();
             } else {
@@ -77,6 +84,23 @@ impl<'a> Parser<'a> {
         id
     }
 
+    fn err_consume_add_to(&mut self, id: Id, tokens: &[Token]) -> Id {
+        let mut fin_span = self.spans[id.0 as usize].clone();
+
+        while let Some((token, span)) = self.lexer.peek() {
+            if !tokens.contains(token) {
+                fin_span = fin_span.start..span.end;
+                self.lexer.next();
+            } else {
+                break;
+            }
+        }
+
+        self.spans[id.0 as usize] = fin_span;
+
+        id
+    }
+
     fn eat(&mut self) -> Span {
         let span = self.span();
         self.lexer.next();
@@ -85,6 +109,51 @@ impl<'a> Parser<'a> {
 
     fn peek(&mut self) -> Option<Token> {
         self.lexer.peek().map(|(t, _)| *t)
+    }
+
+    fn parse_fun(&mut self) -> Item {
+        // Fun keyword
+        let id = self.consume();
+
+        let name = match self.peek() {
+            Some(Token::Identifier(s)) => ItemName(self.consume(), s),
+            _ => {
+                return Item::Error(
+                    self.err_consume_add_to(id, &Self::ITEM_SYNC),
+                    ParserErrorKind::TODOError,
+                )
+            }
+        };
+
+        match self.peek() {
+            Some(Token::LeftParen) => self.eat(),
+            _ => {
+                return Item::Error(
+                    self.err_consume_add_to(id, &Self::ITEM_SYNC),
+                    ParserErrorKind::TODOError,
+                )
+            }
+        };
+
+        match self.peek() {
+            Some(Token::RightParen) => self.eat(),
+            _ => {
+                return Item::Error(
+                    self.err_consume_add_to(id, &Self::ITEM_SYNC),
+                    ParserErrorKind::TODOError,
+                )
+            }
+        };
+
+        let expr = match self.peek() {
+            Some(Token::LeftBrace) => self.parse_block().expr(),
+            _ => Expr::Error(
+                self.err_consume(&Self::EXPR_SYNC),
+                ParserErrorKind::TODOError,
+            ),
+        };
+
+        Item::Fun(id, name, expr)
     }
 
     fn parse_expr(&mut self, min_binding_power: u8) -> ParserResult {
@@ -98,7 +167,7 @@ impl<'a> Parser<'a> {
             Some(Token::Int(i)) => Ok(Expr::Int(self.consume(), i)),
             Some(Token::LeftBrace) => self.parse_block(),
             Some(_) | None => Err(Expr::Error(
-                self.err_consume(),
+                self.err_consume(&Self::EXPR_SYNC),
                 ParserErrorKind::TokenIsntAPrefixToken,
             )),
         }

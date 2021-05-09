@@ -42,4 +42,6 @@ pub enum ParserErrorKind {
     AttributeMustBeAnIdentifier,
     #[error("Missing attribute.")]
     MissingAttribute,
+    #[error("TODO Error")]
+    TODOError,
 }

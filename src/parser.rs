@@ -18,7 +18,7 @@ pub fn parse<'a>(lexer: Lexer<'a, Token>) {
 
     println!(
         "{}",
-        PrettyPrint::new(parser.spans.clone()).visit_expr(&expr),
+        PrettyPrint::new(parser.spans.clone()).visit_expr(&expr.expr()),
     );
 }
 
@@ -28,9 +28,20 @@ struct Parser<'a> {
     spans: Vec<Span>,
 }
 
-impl<'a> Parser<'a> {
-    #![allow(dead_code)]
+type ParserResult = Result<Expr, Expr>;
+trait ParserResultTrait {
+    fn expr(self) -> Expr;
+}
+impl ParserResultTrait for ParserResult {
+    fn expr(self) -> Expr {
+        match self {
+            Ok(e) => e,
+            Err(e) => e,
+        }
+    }
+}
 
+impl<'a> Parser<'a> {
     fn span(&mut self) -> Span {
         self.lexer.peek().map_or(0..0, |(_, span)| span.clone())
     }
@@ -76,56 +87,58 @@ impl<'a> Parser<'a> {
         self.lexer.peek().map(|(t, _)| *t)
     }
 
-    fn parse_expr(&mut self, min_binding_power: u8) -> Expr {
-        let tree = self.parse_prefix();
+    fn parse_expr(&mut self, min_binding_power: u8) -> ParserResult {
+        let tree = self.parse_prefix().expr();
         let tree = self.parse_infix(tree, min_binding_power);
         tree
     }
 
-    fn parse_prefix(&mut self) -> Expr {
+    fn parse_prefix(&mut self) -> ParserResult {
         match self.peek() {
-            Some(Token::Int(i)) => Expr::Int(self.consume(), i),
+            Some(Token::Int(i)) => Ok(Expr::Int(self.consume(), i)),
             Some(Token::LeftBrace) => self.parse_block(),
-            Some(_) | None => {
-                Expr::Error(self.err_consume(), ParserErrorKind::TokenIsntAPrefixToken)
-            }
+            Some(_) | None => Err(Expr::Error(
+                self.err_consume(),
+                ParserErrorKind::TokenIsntAPrefixToken,
+            )),
         }
     }
 
-    fn parse_block(&mut self) -> Expr {
+    fn parse_block(&mut self) -> ParserResult {
         let id = self.consume();
+
+        // Set the span so that first number represents { and the second represents }
+        fn eat_right_brace(slf: &mut Parser, id: Id) {
+            slf.spans[id.0 as usize] = (slf.spans[id.0 as usize].start)..(slf.eat().end - 1);
+        }
+
         let mut exprs = Vec::new();
 
         while let Some(token) = self.peek() {
             // Block ended
             if token == Token::RightBrace {
+                eat_right_brace(self, id);
                 break;
             }
 
             let expr = self.parse_expr(0);
 
-            if let Expr::Error(_, _) = expr {
-                if let Some(Token::RightBrace) = self.peek() {
-                    // Expr is an error but it synced to the right brace
-                    // so add it to the list and return a Block
-                    exprs.push(expr);
-                    break;
-                } else {
-                    // Expr is an error and we can't sync here so return an error
-                    return expr;
+            match expr {
+                Ok(e) => exprs.push(e),
+                Err(e) => {
+                    exprs.push(e);
+                    if let Some(Token::RightBrace) = self.peek() {
+                        eat_right_brace(self, id);
+                    }
+                    return Err(Expr::Block(id, exprs));
                 }
-            } else {
-                // Expr is not an error so just add it to the list
-                exprs.push(expr);
             }
         }
 
-        // Set the span so that first number represents { and the second represents }
-        self.spans[id.0 as usize] = (self.spans[id.0 as usize].start)..(self.eat().end - 1);
-        Expr::Block(id, exprs)
+        Ok(Expr::Block(id, exprs))
     }
 
-    fn parse_infix(&mut self, tree: Expr, min_binding_power: u8) -> Expr {
+    fn parse_infix(&mut self, tree: Expr, min_binding_power: u8) -> ParserResult {
         // Associativity
         const LEFT: u8 = 0;
         const RIGHT: u8 = 1;
@@ -139,12 +152,12 @@ impl<'a> Parser<'a> {
                     self.consume(),
                     BinOpKind::Add,
                     Box::new(tree),
-                    Box::new(self.parse_expr(10)),
+                    Box::new(self.parse_expr(10).expr()),
                 ),
                 _ => break,
             }
         }
 
-        tree
+        Ok(tree)
     }
 }

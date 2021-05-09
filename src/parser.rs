@@ -157,9 +157,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self, min_binding_power: u8) -> ParserResult {
-        let tree = self.parse_prefix().expr();
-        let tree = self.parse_infix(tree, min_binding_power);
-        tree
+        match self.parse_prefix(){
+            Ok(e) => self.parse_infix(e, min_binding_power),
+            Err(e) => Err(e),
+        }
     }
 
     fn parse_prefix(&mut self) -> ParserResult {

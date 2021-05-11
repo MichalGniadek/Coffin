@@ -1,22 +1,23 @@
 use crate::{
-    ast::{BinOpKind, Expr, Id, Item, ItemName, Spans, Visitor},
+    ast::{BinOpKind, Expr, Id, Item, ItemName, Spans, UntypedAst},
     error::ParserErrorKind,
     lexer::Token,
-    pretty_print::PrettyPrint,
 };
 use logos::{Lexer, Span, SpannedIter};
 use std::iter::Peekable;
 
-pub fn parse<'a>(lexer: Lexer<'a, Token>) {
+pub fn parse<'a>(lexer: Lexer<'a, Token>) -> UntypedAst {
     let mut parser = Parser {
         lexer: lexer.spanned().peekable(),
         spans: Spans::new(),
     };
 
     let fun = parser.parse_fun();
-    println!("{}", PrettyPrint::new(&parser.spans).visit_item(&fun));
-    let fun = parser.parse_fun();
-    println!("{}", PrettyPrint::new(&parser.spans).visit_item(&fun));
+
+    UntypedAst {
+        item: fun,
+        spans: parser.spans,
+    }
 }
 
 struct Parser<'a> {

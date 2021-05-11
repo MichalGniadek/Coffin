@@ -8,7 +8,7 @@ use std::{
 
 #[derive(Debug)]
 pub struct UntypedAst {
-    // TODO
+    pub item: Item,
     pub spans: Spans,
 }
 

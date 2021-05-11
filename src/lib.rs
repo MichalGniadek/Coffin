@@ -1,8 +1,8 @@
-mod ast;
-mod error;
-mod lexer;
-mod parser;
-mod pretty_print;
+pub mod ast;
+pub mod error;
+pub mod lexer;
+pub mod parser;
+pub mod pretty_print;
 
 use assembler::{Assembler, DisassembleOptions};
 use codespan_reporting::{

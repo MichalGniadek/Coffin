@@ -100,3 +100,49 @@ pub enum Token {
     #[regex(r"[ \r\n\t\f]+", logos::skip)]
     Poisoned,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::assert_debug_snapshot;
+
+    #[test]
+    fn identifiers() {
+        assert_debug_snapshot!(Token::lexer("asd . _asd . _ . asd90 . 90asd").collect::<Vec<_>>(), @r###"
+        [
+            Identifier(
+                Spur {
+                    key: 1,
+                },
+            ),
+            Dot,
+            Identifier(
+                Spur {
+                    key: 2,
+                },
+            ),
+            Dot,
+            Identifier(
+                Spur {
+                    key: 3,
+                },
+            ),
+            Dot,
+            Identifier(
+                Spur {
+                    key: 4,
+                },
+            ),
+            Dot,
+            Int(
+                90,
+            ),
+            Identifier(
+                Spur {
+                    key: 1,
+                },
+            ),
+        ]
+        "###);
+    }
+}

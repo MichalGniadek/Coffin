@@ -11,6 +11,7 @@ pub struct PrettyPrint<'a> {
 }
 
 impl<'a> PrettyPrint<'a> {
+    #![allow(dead_code)]
     pub fn new(spans: &'a Spans) -> Self {
         Self {
             spans,

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{BinOpKind, Expr, Id, Item, ItemName, Visitor},
+    ast::{BinOpKind, Expr, Id, Item, ItemName, Spans, Visitor},
     error::ParserErrorKind,
     lexer::Token,
     pretty_print::PrettyPrint,
@@ -10,39 +10,30 @@ use std::iter::Peekable;
 pub fn parse<'a>(lexer: Lexer<'a, Token>) {
     let mut parser = Parser {
         lexer: lexer.spanned().peekable(),
-        id: Id(0),
-        spans: vec![],
+        spans: Spans::new(),
     };
 
     let fun = parser.parse_fun();
-    println!(
-        "{}",
-        PrettyPrint::new(parser.spans.clone()).visit_item(&fun)
-    );
+    println!("{}", PrettyPrint::new(&parser.spans).visit_item(&fun));
     let fun = parser.parse_fun();
-    println!(
-        "{}",
-        PrettyPrint::new(parser.spans.clone()).visit_item(&fun)
-    );
+    println!("{}", PrettyPrint::new(&parser.spans).visit_item(&fun));
 }
 
 struct Parser<'a> {
     lexer: Peekable<SpannedIter<'a, Token>>,
-    id: Id,
-    spans: Vec<Span>,
+    spans: Spans,
 }
 
-type ParserResult = Result<Expr, Expr>;
-
-trait ParserResultTrait {
-    fn expr(self) -> Expr;
+enum ParserResult {
+    Ok(Expr),
+    Panic(Expr),
 }
-
-impl ParserResultTrait for ParserResult {
+use ParserResult::{Ok, Panic};
+impl ParserResult {
     fn expr(self) -> Expr {
         match self {
             Ok(e) => e,
-            Err(e) => e,
+            Panic(e) => e,
         }
     }
 }
@@ -51,64 +42,42 @@ impl<'a> Parser<'a> {
     const ITEM_SYNC: [Token; 1] = [Token::Fun];
     const EXPR_SYNC: [Token; 2] = [Token::RightBrace, Token::Fun];
 
-    fn span(&mut self) -> Span {
-        self.lexer.peek().map_or(0..0, |(_, span)| span.clone())
+    fn peek(&mut self) -> Option<Token> {
+        self.lexer.peek().map(|(t, _)| *t)
     }
 
-    fn consume(&mut self) -> Id {
-        let span = self.span();
-        self.spans.push(span);
-        self.lexer.next();
-
-        let id = self.id;
-        self.id = Id(self.id.0 + 1);
-        id
+    fn peek_span(&mut self) -> Span {
+        self.lexer.peek().map_or(0..0, |(_, s)| s.clone())
     }
 
-    fn err_consume(&mut self, tokens: &[Token]) -> Id {
-        let mut fin_span = self.span();
-
-        while let Some((token, span)) = self.lexer.peek() {
-            if !tokens.contains(token) {
-                fin_span = fin_span.start..span.end;
-                self.lexer.next();
-            } else {
-                break;
-            }
-        }
-
-        self.spans.push(fin_span.clone());
-
-        let id = self.id;
-        self.id = Id(self.id.0 + 1);
-        id
-    }
-
-    fn err_consume_add_to(&mut self, id: Id, tokens: &[Token]) -> Id {
-        let mut fin_span = self.spans[id.0 as usize].clone();
-
-        while let Some((token, span)) = self.lexer.peek() {
-            if !tokens.contains(token) {
-                fin_span = fin_span.start..span.end;
-                self.lexer.next();
-            } else {
-                break;
-            }
-        }
-
-        self.spans[id.0 as usize] = fin_span;
-
-        id
-    }
-
-    fn eat(&mut self) -> Span {
-        let span = self.span();
+    fn skip(&mut self) -> Span {
+        let span = self.peek_span();
         self.lexer.next();
         span
     }
 
-    fn peek(&mut self) -> Option<Token> {
-        self.lexer.peek().map(|(t, _)| *t)
+    fn consume(&mut self) -> Id {
+        let span = self.peek_span();
+        self.lexer.next();
+        self.spans.push(span)
+    }
+
+    fn err_consume(&mut self, tokens: &[Token]) -> Id {
+        let span = self.peek_span();
+        let id = self.spans.push(span);
+        self.err_consume_add_to(id, tokens)
+    }
+
+    fn err_consume_add_to(&mut self, id: Id, tokens: &[Token]) -> Id {
+        while let Some((token, span)) = self.lexer.peek() {
+            if !tokens.contains(token) {
+                self.spans[id].end = span.end;
+                self.lexer.next();
+            } else {
+                break;
+            }
+        }
+        id
     }
 
     fn parse_fun(&mut self) -> Item {
@@ -126,7 +95,7 @@ impl<'a> Parser<'a> {
         };
 
         match self.peek() {
-            Some(Token::LeftParen) => self.eat(),
+            Some(Token::LeftParen) => self.skip(),
             _ => {
                 return Item::Error(
                     self.err_consume_add_to(id, &Self::ITEM_SYNC),
@@ -136,7 +105,7 @@ impl<'a> Parser<'a> {
         };
 
         match self.peek() {
-            Some(Token::RightParen) => self.eat(),
+            Some(Token::RightParen) => self.skip(),
             _ => {
                 return Item::Error(
                     self.err_consume_add_to(id, &Self::ITEM_SYNC),
@@ -157,9 +126,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self, min_binding_power: u8) -> ParserResult {
-        match self.parse_prefix(){
+        match self.parse_prefix() {
             Ok(e) => self.parse_infix(e, min_binding_power),
-            Err(e) => Err(e),
+            Panic(e) => Panic(e),
         }
     }
 
@@ -167,7 +136,7 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(Token::Int(i)) => Ok(Expr::Int(self.consume(), i)),
             Some(Token::LeftBrace) => self.parse_block(),
-            Some(_) | None => Err(Expr::Error(
+            Some(_) | None => Panic(Expr::Error(
                 self.err_consume(&Self::EXPR_SYNC),
                 ParserErrorKind::TokenIsntAPrefixToken,
             )),
@@ -177,17 +146,12 @@ impl<'a> Parser<'a> {
     fn parse_block(&mut self) -> ParserResult {
         let id = self.consume();
 
-        // Set the span so that first number represents { and the second represents }
-        fn eat_right_brace(slf: &mut Parser, id: Id) {
-            slf.spans[id.0 as usize] = (slf.spans[id.0 as usize].start)..(slf.eat().end - 1);
-        }
-
         let mut exprs = Vec::new();
 
         while let Some(token) = self.peek() {
             // Block ended
             if token == Token::RightBrace {
-                eat_right_brace(self, id);
+                self.spans[id].end = self.skip().end - 1;
                 break;
             }
 
@@ -195,12 +159,12 @@ impl<'a> Parser<'a> {
 
             match expr {
                 Ok(e) => exprs.push(e),
-                Err(e) => {
+                Panic(e) => {
                     exprs.push(e);
                     if let Some(Token::RightBrace) = self.peek() {
-                        eat_right_brace(self, id);
+                        self.spans[id].end = self.skip().end - 1;
                     }
-                    return Err(Expr::Block(id, exprs));
+                    return Panic(Expr::Block(id, exprs));
                 }
             }
         }
@@ -211,7 +175,7 @@ impl<'a> Parser<'a> {
     fn parse_infix(&mut self, tree: Expr, min_binding_power: u8) -> ParserResult {
         // Associativity
         const LEFT: u8 = 0;
-        const RIGHT: u8 = 1;
+        const _RIGHT: u8 = 1;
 
         let mut tree = tree;
 

@@ -1,17 +1,48 @@
+use crate::error::ParserErrorKind;
 use lasso::Spur;
 use logos::Span;
-use std::num::NonZeroU32;
-
-use crate::error::ParserErrorKind;
+use std::{
+    num::NonZeroU32,
+    ops::{Index, IndexMut},
+};
 
 #[derive(Debug)]
 pub struct UntypedAst {
     // TODO
-    pub spans: Vec<Span>,
+    pub spans: Spans,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Id(pub u32);
+pub struct Id(u32);
+
+#[derive(Debug, Clone)]
+pub struct Spans(Vec<Span>);
+
+impl Spans {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn push(&mut self, value: Span) -> Id {
+        self.0.push(value);
+        Id(self.0.len() as u32 - 1)
+    }
+}
+
+impl Index<Id> for Spans {
+    type Output = Span;
+
+    fn index(&self, index: Id) -> &Self::Output {
+        &self.0[index.0 as usize]
+    }
+}
+
+impl IndexMut<Id> for Spans {
+    fn index_mut(&mut self, index: Id) -> &mut Self::Output {
+        &mut self.0[index.0 as usize]
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SpirvId(pub NonZeroU32);
 

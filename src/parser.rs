@@ -37,15 +37,21 @@ impl ParserResult {
             Panic(e) => e,
         }
     }
+    fn is_panic(self) -> (Expr, bool) {
+        match self {
+            Ok(e) => (e, false),
+            Panic(e) => (e, true),
+        }
+    }
 }
 
 impl Parser<'_> {
-    const ITEM_SYNC: [Token; 1] = [Token::Fun];
-    const EXPR_SYNC: [Token; 2] = [Token::RightBrace, Token::Fun];
+    const ITEM_SYNC: [Token; 2] = [Token::Fun, Token::EOF];
+    const EXPR_SYNC: [Token; 3] = [Token::RightBrace, Token::Fun, Token::EOF];
 
     /// Peeks the next token.
-    fn peek(&mut self) -> Option<Token> {
-        self.lexer.peek().map(|(t, _)| *t)
+    fn peek(&mut self) -> Token {
+        self.lexer.peek().map_or(Token::EOF, |(t, _)| t.clone())
     }
 
     /// Peeks the next span.
@@ -66,6 +72,17 @@ impl Parser<'_> {
         let span = self.peek_span();
         self.lexer.next();
         self.spans.push(span)
+    }
+
+    /// Advances to the next token, add span to the Spans and return the
+    /// corresponding id. Panics if the next token isn't the correct.
+    fn consume_expect(&mut self, token: Token) -> Id {
+        assert!(
+            self.peek() == token,
+            "Compiler error: expected '{:?}' token.",
+            token
+        );
+        self.consume()
     }
 
     /// Advances until it peeks one of the token in tokens and adds all
@@ -94,20 +111,16 @@ impl Parser<'_> {
 
     fn parse_item(&mut self) -> Item {
         match self.peek() {
-            Some(Token::Fun) => self.parse_fun(),
+            Token::Fun => self.parse_fun(),
             _ => todo!(),
         }
     }
 
     fn parse_fun(&mut self) -> Item {
-        assert!(
-            self.peek() == Some(Token::Fun),
-            "Compiler error: parse_fun should be called with fun keyword remaining."
-        );
-        let id = self.consume();
+        let id = self.consume_expect(Token::Fun);
 
         let name = match self.peek() {
-            Some(Token::Identifier(s)) => ItemName(self.consume(), s),
+            Token::Identifier(s) => ItemName(self.consume(), s),
             _ => {
                 return Item::Error(
                     self.err_consume_add_to(id, &Self::ITEM_SYNC),
@@ -117,7 +130,7 @@ impl Parser<'_> {
         };
 
         match self.peek() {
-            Some(Token::LeftParen) => self.skip(),
+            Token::LeftParen => self.skip(),
             _ => {
                 return Item::Error(
                     self.err_consume_add_to(id, &Self::ITEM_SYNC),
@@ -127,7 +140,7 @@ impl Parser<'_> {
         };
 
         match self.peek() {
-            Some(Token::RightParen) => self.skip(),
+            Token::RightParen => self.skip(),
             _ => {
                 return Item::Error(
                     self.err_consume_add_to(id, &Self::ITEM_SYNC),
@@ -137,7 +150,7 @@ impl Parser<'_> {
         };
 
         let expr = match self.peek() {
-            Some(Token::LeftBrace) => self.parse_block().expr(),
+            Token::LeftBrace => self.parse_block().expr(),
             _ => Expr::Error(
                 self.err_consume(&Self::EXPR_SYNC),
                 ParserErrorKind::TODOError,
@@ -156,9 +169,9 @@ impl Parser<'_> {
 
     fn parse_prefix(&mut self) -> ParserResult {
         match self.peek() {
-            Some(Token::Int(i)) => Ok(Expr::Int(self.consume(), i)),
-            Some(Token::LeftBrace) => self.parse_block(),
-            Some(_) | None => Panic(Expr::Error(
+            Token::Int(i) => Ok(Expr::Int(self.consume(), i)),
+            Token::LeftBrace => self.parse_block(),
+            _ => Panic(Expr::Error(
                 self.err_consume(&Self::EXPR_SYNC),
                 ParserErrorKind::TokenIsntAPrefixToken,
             )),
@@ -166,36 +179,30 @@ impl Parser<'_> {
     }
 
     fn parse_block(&mut self) -> ParserResult {
-        assert!(
-            self.peek() == Some(Token::LeftBrace),
-            "Compiler error: parse_fun should be called with left brace keyword remaining."
-        );
-        let id = self.consume();
+        let id = self.consume_expect(Token::LeftBrace);
 
         let mut exprs = Vec::new();
 
-        while let Some(token) = self.peek() {
-            // Block ended
-            if token == Token::RightBrace {
-                self.spans[id].end = self.skip().end - 1;
-                break;
+        let out = loop {
+            if self.peek() == Token::RightBrace {
+                break Ok(Expr::Block(id, exprs));
             }
 
-            let expr = self.parse_expr(0);
+            let (expr, is_panic) = self.parse_expr(0).is_panic();
+            exprs.push(expr);
 
-            match expr {
-                Ok(e) => exprs.push(e),
-                Panic(e) => {
-                    exprs.push(e);
-                    if let Some(Token::RightBrace) = self.peek() {
-                        self.spans[id].end = self.skip().end - 1;
-                    }
-                    return Panic(Expr::Block(id, exprs));
-                }
+            if is_panic {
+                break Panic(Expr::Block(id, exprs));
             }
+        };
+
+        if self.peek() == Token::RightBrace {
+            self.spans[id].end = self.skip().end - 1;
+        } else {
+            self.spans[id].end = self.spans[id].start;
         }
 
-        Ok(Expr::Block(id, exprs))
+        out
     }
 
     fn parse_infix(&mut self, mut tree: Expr, min_binding_power: u8) -> ParserResult {
@@ -203,8 +210,8 @@ impl Parser<'_> {
         const LEFT: u8 = 0;
         const _RIGHT: u8 = 1;
 
-        while let Some(token) = self.peek() {
-            tree = match token {
+        loop {
+            tree = match self.peek() {
                 // Token::T if binding_power + associativity > min_binding_power
                 Token::Plus if 10 + LEFT > min_binding_power => Expr::Binary(
                     self.consume(),

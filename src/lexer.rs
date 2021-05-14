@@ -96,6 +96,7 @@ pub enum Token {
     Spirv,
     #[regex(r"//.*")]
     Comment,
+    EOF,
     #[error]
     #[regex(r"[ \r\n\t\f]+", logos::skip)]
     Poisoned,

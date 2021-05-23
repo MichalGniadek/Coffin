@@ -1,0 +1,19 @@
+---
+source: tests/parser_tests.rs
+expression: "PrettyPrint::new(&ast.spans).visit_item(&ast.item)"
+
+---
+[0..3] fun "[4..7] Spur { key: 1 }"
+[9..139] {	
+	[16..136] {		
+		[27..53] {			
+			([42..43] #1)
+			}
+		[64..92] {			
+			[79..82] expr error TokenIsntAPrefixToken
+			}
+		[103..129] {			
+			([118..119] #3)
+			}
+		}
+	}

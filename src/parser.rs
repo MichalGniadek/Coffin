@@ -37,7 +37,7 @@ impl ParserResult {
             Panic(e) => e,
         }
     }
-    fn is_panic(self) -> (Expr, bool) {
+    fn destruct(self) -> (Expr, bool) {
         match self {
             Ok(e) => (e, false),
             Panic(e) => (e, true),
@@ -45,9 +45,33 @@ impl ParserResult {
     }
 }
 
+const fn concat<const A: usize, const B: usize, const C: usize>(
+    a: [Token; A],
+    b: [Token; B],
+) -> [Token; C] {
+    // Check lengths
+    let _ = [0; 1][A + B - C];
+
+    let mut out = [Token::EOF; C];
+
+    let mut i = 0;
+
+    while i < A {
+        out[i] = a[i];
+        i += 1;
+    }
+
+    while i < A + B {
+        out[i] = b[i - A];
+        i += 1;
+    }
+
+    out
+}
+
 impl Parser<'_> {
     const ITEM_SYNC: [Token; 2] = [Token::Fun, Token::EOF];
-    const EXPR_SYNC: [Token; 3] = [Token::RightBrace, Token::Fun, Token::EOF];
+    const EXPR_SYNC: [Token; 3] = concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
     /// Peeks the next token.
     fn peek(&mut self) -> Token {
@@ -183,26 +207,20 @@ impl Parser<'_> {
 
         let mut exprs = Vec::new();
 
-        let out = loop {
+        loop {
             if self.peek() == Token::RightBrace {
-                break Ok(Expr::Block(id, exprs));
+                self.spans[id].end = self.skip().end - 1;
+                return Ok(Expr::Block(id, exprs));
             }
 
-            let (expr, is_panic) = self.parse_expr(0).is_panic();
+            let (expr, is_panic) = self.parse_expr(0).destruct();
             exprs.push(expr);
 
-            if is_panic {
-                break Panic(Expr::Block(id, exprs));
+            if is_panic && self.peek() != Token::RightBrace {
+                self.spans[id].end = self.spans[id].start;
+                return Panic(Expr::Block(id, exprs));
             }
-        };
-
-        if self.peek() == Token::RightBrace {
-            self.spans[id].end = self.skip().end - 1;
-        } else {
-            self.spans[id].end = self.spans[id].start;
         }
-
-        out
     }
 
     fn parse_infix(&mut self, mut tree: Expr, min_binding_power: u8) -> ParserResult {

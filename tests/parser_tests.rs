@@ -10,6 +10,12 @@ fn insta() {
         let code = fs::read_to_string(path).unwrap();
         let lexer = Token::lexer(&code);
         let ast = parser::parse(lexer);
-        assert_snapshot!(PrettyPrint::new(&ast.spans).visit_item(&ast.item));
+        let mut print = PrettyPrint::new(&ast.spans);
+        assert_snapshot!(ast
+            .items
+            .iter()
+            .map(|i| print.visit_item(i))
+            .reduce(|a, b| format!("{}\n{}", a, b))
+            .unwrap());
     });
 }

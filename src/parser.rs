@@ -12,10 +12,14 @@ pub fn parse(lexer: Lexer<'_, Token>) -> UntypedAst {
         spans: Spans::new(),
     };
 
-    let fun = parser.parse_item();
+    let mut items = vec![];
 
+    while parser.peek() != Token::EOF {
+        items.push(parser.parse_item());
+    }
+    
     UntypedAst {
-        item: fun,
+        items,
         spans: parser.spans,
     }
 }

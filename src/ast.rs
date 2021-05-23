@@ -8,7 +8,7 @@ use std::{
 
 #[derive(Debug)]
 pub struct UntypedAst {
-    pub item: Item,
+    pub items: Vec<Item>,
     pub spans: Spans,
 }
 

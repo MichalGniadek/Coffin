@@ -1,8 +1,8 @@
 use crate::{
-    ast::{self, Spans, Visitor},
-    error::ParserErrorKind,
+    ast::{self, Attrs, Spans, Visitor},
+    error::ParserError,
 };
-use ast::{BinOpKind, Expr, Id, ItemName};
+use ast::{BinOpKind, Expr, Id, Name};
 use lasso::Spur;
 
 pub struct PrettyPrint<'a> {
@@ -23,18 +23,31 @@ impl<'a> PrettyPrint<'a> {
 impl<'a> Visitor for PrettyPrint<'a> {
     type Out = String;
 
-    fn fun(&mut self, id: Id, name: ItemName, expr: &Expr) -> Self::Out {
+    fn fun(&mut self, id: Id, attrs: &Attrs, name: Name, expr: &Expr) -> Self::Out {
+        let attr_text = match attrs {
+            Attrs::Ok(_id, _attrs) => "some attrs".to_string(),
+            Attrs::None => String::new(),
+            Attrs::Error(id, err) => format!(
+                "[{:?}] attr error [{:?}] {:?}",
+                self.spans[*id], err.1, err.0
+            ),
+        };
+
         format!(
-            "[{:?}] fun \"[{:?}] {:?}\"\n{}",
+            "[{:?}] {} fun \"[{:?}] {:?}\"\n{}",
             self.spans[id],
+            attr_text,
             self.spans[name.0],
             name.1,
             self.visit_expr(expr)
         )
     }
 
-    fn item_error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out {
-        format!("[{:?}] item error {:?}", self.spans[id], kind)
+    fn item_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
+        format!(
+            "[{:?}] item error [{:?}] {:?}",
+            self.spans[id], err.1, err.0
+        )
     }
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
@@ -91,7 +104,10 @@ impl<'a> Visitor for PrettyPrint<'a> {
         out
     }
 
-    fn expr_error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out {
-        format!("[{:?}] expr error {:?}", self.spans[id], kind)
+    fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
+        format!(
+            "[{:?}] expr error [{:?}] {:?}",
+            self.spans[id], err.1, err.0
+        )
     }
 }

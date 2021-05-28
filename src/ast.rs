@@ -1,4 +1,4 @@
-use crate::error::ParserErrorKind;
+use crate::{error::ParserError, lexer::Token};
 use lasso::Spur;
 use logos::Span;
 use std::{
@@ -46,20 +46,26 @@ impl IndexMut<Id> for Spans {
 #[derive(Debug, Clone, Copy)]
 pub struct SpirvId(pub NonZeroU32);
 
+#[derive(Debug, Clone)]
+pub struct Attr(pub Name, pub Vec<(Id, Token)>);
+
+#[derive(Debug, Clone)]
+pub enum Attrs {
+    Ok(Id, Vec<Attr>),
+    None,
+    Error(Id, ParserError),
+}
+
 #[derive(Debug)]
 pub enum Item {
-    Fun(
-        Id,
-        /* Attrs, */ ItemName,
-        /* Args, Return Value,*/ Expr,
-    ),
-    Error(Id, ParserErrorKind),
+    Fun(Id, Attrs, Name, /* Args, Return Value,*/ Expr),
+    Error(Id, ParserError),
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ItemName(pub Id, pub Spur);
+pub struct Name(pub Id, pub Spur);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Expr {
     Binary(Id, BinOpKind, Box<Expr>, Box<Expr>),
@@ -68,7 +74,7 @@ pub enum Expr {
     Float(Id, f32),
     Int(Id, i32),
     Block(Id, Vec<Expr>),
-    Error(Id, ParserErrorKind),
+    Error(Id, ParserError),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -87,7 +93,7 @@ pub trait Visitor {
 
     fn visit_item(&mut self, item: &Item) -> Self::Out {
         match item {
-            Item::Fun(id, name, expr) => self.fun(*id, *name, expr),
+            Item::Fun(id, attrs, name, expr) => self.fun(*id, attrs, *name, expr),
             Item::Error(id, kind) => self.item_error(*id, kind),
         }
     }
@@ -104,8 +110,8 @@ pub trait Visitor {
         }
     }
 
-    fn fun(&mut self, id: Id, name: ItemName, expr: &Expr) -> Self::Out;
-    fn item_error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out;
+    fn fun(&mut self, id: Id, attrs: &Attrs, name: Name, expr: &Expr) -> Self::Out;
+    fn item_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
     fn assign(&mut self, id: Id, left: &Expr, right: &Expr) -> Self::Out;
@@ -113,5 +119,5 @@ pub trait Visitor {
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
-    fn expr_error(&mut self, id: Id, kind: &ParserErrorKind) -> Self::Out;
+    fn expr_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;
 }

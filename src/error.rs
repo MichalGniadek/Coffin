@@ -22,11 +22,11 @@ impl CoffinError {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 #[error("{0}")]
 pub struct ParserError(#[source] pub ParserErrorKind, pub Span);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum ParserErrorKind {
     #[error("Unexpected token while trying to parse an item.")]
     UnexpectedTokenWhileParsingItem,
@@ -42,6 +42,8 @@ pub enum ParserErrorKind {
     AttributeMustBeAnIdentifier,
     #[error("Missing attribute.")]
     MissingAttribute,
+    #[error("Expected identifier.")]
+    ExpectedIdentifier,
     #[error("TODO Error")]
     TODOError,
 }

@@ -81,8 +81,8 @@ const fn concat<const A: usize, const B: usize, const C: usize>(
 }
 
 impl Parser<'_> {
-    const ITEM_SYNC: [Token; 2] = [Token::Fun, Token::EOF];
-    const EXPR_SYNC: [Token; 3] = concat(Self::ITEM_SYNC, [Token::RightBrace]);
+    const ITEM_SYNC: [Token; 3] = [Token::Fun, Token::HashBracket, Token::EOF];
+    const EXPR_SYNC: [Token; 4] = concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
     /// Peeks the next token.
     fn peek(&mut self) -> Token {
@@ -147,5 +147,28 @@ impl Parser<'_> {
         }
 
         ErrorNode(id, ParserError(kind, err_span)).into()
+    }
+
+    // If a token isn't one of '(', '{', '[' it returns an empty vec.
+    fn parse_delimited_tokens(&mut self) -> Vec<(Id, Token)> {
+        let delimiter = match self.peek() {
+            Token::LeftBrace => Token::RightBrace,
+            Token::LeftBracket => Token::RightBracket,
+            Token::LeftParen => Token::RightParen,
+            _ => return vec![],
+        };
+
+        let mut vec = vec![];
+        while self.peek() != delimiter && self.peek() != Token::EOF {
+            let token = self.peek();
+            let id = self.consume();
+            vec.push((id, token));
+        }
+
+        let token = self.peek();
+        let id = self.consume();
+        vec.push((id, token));
+
+        vec
     }
 }

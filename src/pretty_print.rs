@@ -25,7 +25,11 @@ impl<'a> Visitor for PrettyPrint<'a> {
 
     fn fun(&mut self, id: Id, attrs: &Attrs, name: Name, expr: &Expr) -> Self::Out {
         let attr_text = match attrs {
-            Attrs::Ok(_id, _attrs) => "some attrs".to_string(),
+            Attrs::Ok(id, attrs) => attrs
+                .into_iter()
+                .fold(format!("[{:?}]", self.spans[*id]), |a, b| {
+                    format!("{}, {:?} {:?}", a, b.0, b.1)
+                }),
             Attrs::None => String::new(),
             Attrs::Error(id, err) => format!(
                 "[{:?}] attr error [{:?}] {:?}",
@@ -34,7 +38,7 @@ impl<'a> Visitor for PrettyPrint<'a> {
         };
 
         format!(
-            "[{:?}] {} fun \"[{:?}] {:?}\"\n{}",
+            "[{:?}] #[{}] fun \"[{:?}] {:?}\"\n{}",
             self.spans[id],
             attr_text,
             self.spans[name.0],

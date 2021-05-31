@@ -65,8 +65,8 @@ impl Parser<'_> {
             }
         };
 
-        match self.peek() {
-            Token::LeftParen => self.skip(),
+        let paren_id = match self.peek() {
+            Token::LeftParen => self.consume(),
             _ => {
                 return self.err_consume_append(
                     fun_id,
@@ -76,8 +76,29 @@ impl Parser<'_> {
             }
         };
 
-        match self.peek() {
-            Token::RightParen => self.skip(),
+        let mut params = vec![];
+
+        while self.peek() != Token::RightParen {
+            let field = match self.parse_field(fun_id) {
+                Ok(f) => f,
+                Err(err) => return err,
+            };
+
+            params.push(field);
+
+            if self.peek() == Token::Comma {
+                self.skip();
+            } else if self.peek() != Token::RightParen {
+                return self.err_consume_append(
+                    fun_id,
+                    ParserErrorKind::ExpectedToken(Token::RightParen),
+                    &Self::ITEM_SYNC,
+                );
+            }
+        }
+
+        self.spans[paren_id].end = match self.peek() {
+            Token::RightParen => self.skip().end - 1,
             _ => {
                 return self.err_consume_append(
                     fun_id,
@@ -87,7 +108,7 @@ impl Parser<'_> {
             }
         };
 
-        let expr = match self.peek() {
+        let body = match self.peek() {
             Token::LeftBrace => self.parse_block().expr(),
             _ => self.err_consume_append(
                 fun_id,
@@ -96,6 +117,13 @@ impl Parser<'_> {
             ),
         };
 
-        Item::Fun(fun_id, attrs, name, expr)
+        Item::Fun {
+            fun_id,
+            attrs,
+            name,
+            paren_id,
+            params,
+            body,
+        }
     }
 }

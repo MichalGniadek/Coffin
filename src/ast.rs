@@ -58,12 +58,26 @@ pub enum Attrs {
 
 #[derive(Debug)]
 pub enum Item {
-    Fun(Id, Attrs, Name, /* Args, Return Value,*/ Expr),
+    Fun {
+        fun_id: Id,
+        attrs: Attrs,
+        name: Name,
+        paren_id: Id,
+        params: Vec<Field>,
+        body: Expr,
+    },
     Error(Id, ParserError),
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Name(pub Id, pub Spur);
+
+#[derive(Debug, Clone, Copy)]
+pub struct Field {
+    pub name: Name,
+    pub colon_id: Id,
+    pub ttpe: Name,
+}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -93,7 +107,14 @@ pub trait Visitor {
 
     fn visit_item(&mut self, item: &Item) -> Self::Out {
         match item {
-            Item::Fun(id, attrs, name, expr) => self.fun(*id, attrs, *name, expr),
+            Item::Fun {
+                fun_id,
+                attrs,
+                name,
+                paren_id,
+                params,
+                body,
+            } => self.fun(*fun_id, attrs, *name, *paren_id, params, body),
             Item::Error(id, kind) => self.item_error(*id, kind),
         }
     }
@@ -110,7 +131,15 @@ pub trait Visitor {
         }
     }
 
-    fn fun(&mut self, id: Id, attrs: &Attrs, name: Name, expr: &Expr) -> Self::Out;
+    fn fun(
+        &mut self,
+        fun_id: Id,
+        attrs: &Attrs,
+        name: Name,
+        paren_id: Id,
+        params: &Vec<Field>,
+        body: &Expr,
+    ) -> Self::Out;
     fn item_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;

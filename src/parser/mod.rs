@@ -3,7 +3,7 @@ mod expr_parsing;
 mod item_parsing;
 
 use crate::{
-    ast::{Expr, Id, Spans, UntypedAst},
+    ast::{Expr, Field, Id, Name, Spans, UntypedAst},
     error::{ParserError, ParserErrorKind},
     lexer::Token,
 };
@@ -33,24 +33,24 @@ struct Parser<'a> {
     spans: Spans,
 }
 
-enum ParserResult {
-    Ok(Expr),
+enum ParsedExpr {
+    Good(Expr),
     Panic(Expr),
 }
-use ParserResult::{Ok, Panic};
+use ParsedExpr::{Good, Panic};
 
 use self::error_node::ErrorNode;
 
-impl ParserResult {
+impl ParsedExpr {
     fn expr(self) -> Expr {
         match self {
-            Ok(e) => e,
+            Good(e) => e,
             Panic(e) => e,
         }
     }
     fn destruct(self) -> (Expr, bool) {
         match self {
-            Ok(e) => (e, false),
+            Good(e) => (e, false),
             Panic(e) => (e, true),
         }
     }
@@ -149,7 +149,7 @@ impl Parser<'_> {
         ErrorNode(id, ParserError(kind, err_span)).into()
     }
 
-    // If a token isn't one of '(', '{', '[' it returns an empty vec.
+    /// If a token isn't one of '(', '{', '[' it returns an empty vec.
     fn parse_delimited_tokens(&mut self) -> Vec<(Id, Token)> {
         let delimiter = match self.peek() {
             Token::LeftBrace => Token::RightBrace,
@@ -170,5 +170,47 @@ impl Parser<'_> {
         vec.push((id, token));
 
         vec
+    }
+
+    /// In case of parsing error, err_consume_append will be called with error_id.
+    fn parse_field<T: From<ErrorNode>>(&mut self, error_id: Id) -> Result<Field, T> {
+        let name = match self.peek() {
+            Token::Identifier(s) => Name(self.consume(), s),
+            _ => {
+                return Err(self.err_consume_append(
+                    error_id,
+                    ParserErrorKind::expected_identifier(),
+                    &Self::ITEM_SYNC,
+                ))
+            }
+        };
+
+        let colon_id = match self.peek() {
+            Token::Colon => self.consume(),
+            _ => {
+                return Err(self.err_consume_append(
+                    error_id,
+                    ParserErrorKind::ExpectedToken(Token::Colon),
+                    &Self::ITEM_SYNC,
+                ))
+            }
+        };
+
+        let ttpe = match self.peek() {
+            Token::Identifier(s) => Name(self.consume(), s),
+            _ => {
+                return Err(self.err_consume_append(
+                    error_id,
+                    ParserErrorKind::expected_identifier(),
+                    &Self::ITEM_SYNC,
+                ))
+            }
+        };
+
+        Ok(Field {
+            name,
+            colon_id,
+            ttpe,
+        })
     }
 }

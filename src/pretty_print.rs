@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, Attrs, Spans, Visitor},
+    ast::{self, Attrs, Field, Spans, Visitor},
     error::ParserError,
 };
 use ast::{BinOpKind, Expr, Id, Name};
@@ -23,7 +23,15 @@ impl<'a> PrettyPrint<'a> {
 impl<'a> Visitor for PrettyPrint<'a> {
     type Out = String;
 
-    fn fun(&mut self, id: Id, attrs: &Attrs, name: Name, expr: &Expr) -> Self::Out {
+    fn fun(
+        &mut self,
+        fun_id: Id,
+        attrs: &Attrs,
+        name: Name,
+        paren_id: Id,
+        params: &Vec<Field>,
+        body: &Expr,
+    ) -> Self::Out {
         let attr_text = match attrs {
             Attrs::Ok(id, attrs) => attrs
                 .into_iter()
@@ -33,24 +41,30 @@ impl<'a> Visitor for PrettyPrint<'a> {
             Attrs::None => String::new(),
             Attrs::Error(id, err) => format!(
                 "[{:?}] attr error [{:?}] \"{}\"",
-                self.spans[*id], err.1, err.to_string(),
+                self.spans[*id],
+                err.1,
+                err.to_string(),
             ),
         };
 
         format!(
-            "[{:?}] #[{}] fun \"[{:?}] {:?}\"\n{}",
-            self.spans[id],
+            "[{:?}] #[{}] fun[{:?}]({:?}) \"[{:?}] {:?}\"\n{}",
+            self.spans[fun_id],
             attr_text,
+            self.spans[paren_id],
+            params,
             self.spans[name.0],
             name.1,
-            self.visit_expr(expr)
+            self.visit_expr(body)
         )
     }
 
     fn item_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
         format!(
             "[{:?}] item error [{:?}] \"{}\"",
-            self.spans[id], err.1, err.to_string(),
+            self.spans[id],
+            err.1,
+            err.to_string(),
         )
     }
 
@@ -111,7 +125,9 @@ impl<'a> Visitor for PrettyPrint<'a> {
     fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
         format!(
             "[{:?}] expr error [{:?}] \"{}\"",
-            self.spans[id], err.1, err.to_string(),
+            self.spans[id],
+            err.1,
+            err.to_string(),
         )
     }
 }

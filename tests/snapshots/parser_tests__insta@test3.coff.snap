@@ -6,6 +6,6 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 [29..32] #[[0..26], Name(Id(1), Spur { key: 1 }) [], Name(Id(2), Spur { key: 2 }) [(Id(3), LeftParen), (Id(4), Identifier(Spur { key: 3 })), (Id(5), LeftBrace), (Id(6), RightBrace), (Id(7), Int(123)), (Id(8), RightParen)]] fun "[33..37] Spur { key: 4 }"
 [39..40] {	
 	}
-[55..58] #[[45..53] attr error [51..52] TODOError] fun "[59..63] Spur { key: 4 }"
+[55..58] #[[45..53] attr error [51..52] "Expected token ']'."] fun "[59..63] Spur { key: 4 }"
 [65..66] {	
 	}

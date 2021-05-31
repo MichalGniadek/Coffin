@@ -19,7 +19,7 @@ impl Parser<'_> {
         match self.peek() {
             Token::Int(i) => Ok(Expr::Int(self.consume(), i)),
             Token::LeftBrace => self.parse_block(),
-            _ => Panic(self.err_consume(ParserErrorKind::TokenIsntAPrefixToken, &Self::EXPR_SYNC)),
+            _ => Panic(self.err_consume(ParserErrorKind::ExpectedPrefixToken, &Self::EXPR_SYNC)),
         }
     }
 

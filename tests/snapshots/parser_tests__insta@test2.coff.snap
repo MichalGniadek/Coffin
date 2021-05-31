@@ -7,7 +7,7 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 [7..17] {	
 	([14..15] #2)
 	}
-[22..39] item error [26..27] ExpectedIdentifier
+[22..39] item error [26..27] "Expected token Identifier."
 [43..46] #[] fun "[47..50] Spur { key: 2 }"
 [52..62] {	
 	([59..60] #3)

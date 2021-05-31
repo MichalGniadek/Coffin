@@ -32,8 +32,8 @@ impl<'a> Visitor for PrettyPrint<'a> {
                 }),
             Attrs::None => String::new(),
             Attrs::Error(id, err) => format!(
-                "[{:?}] attr error [{:?}] {:?}",
-                self.spans[*id], err.1, err.0
+                "[{:?}] attr error [{:?}] \"{}\"",
+                self.spans[*id], err.1, err.to_string(),
             ),
         };
 
@@ -49,8 +49,8 @@ impl<'a> Visitor for PrettyPrint<'a> {
 
     fn item_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
         format!(
-            "[{:?}] item error [{:?}] {:?}",
-            self.spans[id], err.1, err.0
+            "[{:?}] item error [{:?}] \"{}\"",
+            self.spans[id], err.1, err.to_string(),
         )
     }
 
@@ -110,8 +110,8 @@ impl<'a> Visitor for PrettyPrint<'a> {
 
     fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
         format!(
-            "[{:?}] expr error [{:?}] {:?}",
-            self.spans[id], err.1, err.0
+            "[{:?}] expr error [{:?}] \"{}\"",
+            self.spans[id], err.1, err.to_string(),
         )
     }
 }

@@ -1,6 +1,9 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
+use lasso::Spur;
 use logos::Span;
 use std::io;
+
+use crate::lexer::Token;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CoffinError {
@@ -28,22 +31,14 @@ pub struct ParserError(#[source] pub ParserErrorKind, pub Span);
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ParserErrorKind {
-    #[error("Unexpected token while trying to parse an item.")]
-    UnexpectedTokenWhileParsingItem,
-    #[error("Unfinished expression.")]
-    UnfinishedExpression,
-    #[error("Token isn't a prefix token.")]
-    TokenIsntAPrefixToken,
-    #[error("Token isn't an infix token.")]
-    TokenIsntAnInfixToken,
-    #[error("Attribute argument must be an int.")]
-    AttributeArgumentMustBeAnInt,
-    #[error("Attribute must be an identifier.")]
-    AttributeMustBeAnIdentifier,
-    #[error("Missing attribute.")]
-    MissingAttribute,
-    #[error("Expected identifier.")]
-    ExpectedIdentifier,
-    #[error("TODO Error")]
-    TODOError,
+    #[error("Expected prefix token.")]
+    ExpectedPrefixToken,
+    #[error("Expected token {0}.")]
+    ExpectedToken(Token),
+}
+
+impl ParserErrorKind {
+    pub fn expected_identifier() -> Self {
+        Self::ExpectedToken(Token::Identifier(Spur::default()))
+    }
 }

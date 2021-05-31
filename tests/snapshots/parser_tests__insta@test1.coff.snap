@@ -10,7 +10,7 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 			([42..43] #1)
 			}
 		[64..92] {			
-			[79..82] expr error [79..80] TokenIsntAPrefixToken
+			[79..82] expr error [79..80] "Expected prefix token."
 			}
 		[103..129] {			
 			([118..119] #3)

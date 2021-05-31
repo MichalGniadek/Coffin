@@ -28,7 +28,7 @@ impl Parser<'_> {
                 _ => {
                     return self.err_consume_append(
                         brackets_id,
-                        ParserErrorKind::ExpectedIdentifier,
+                        ParserErrorKind::expected_identifier(),
                         &Self::ITEM_SYNC,
                     )
                 }
@@ -41,7 +41,7 @@ impl Parser<'_> {
             } else if self.peek() != Token::RightBracket {
                 return self.err_consume_append(
                     brackets_id,
-                    ParserErrorKind::TODOError,
+                    ParserErrorKind::ExpectedToken(Token::RightBracket),
                     &Self::ITEM_SYNC,
                 );
             }
@@ -52,14 +52,14 @@ impl Parser<'_> {
     }
 
     pub(super) fn parse_fun(&mut self, attrs: Attrs) -> Item {
-        let id = self.consume_expect(Token::Fun);
+        let fun_id = self.consume_expect(Token::Fun);
 
         let name = match self.peek() {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
                 return self.err_consume_append(
-                    id,
-                    ParserErrorKind::ExpectedIdentifier,
+                    fun_id,
+                    ParserErrorKind::expected_identifier(),
                     &Self::ITEM_SYNC,
                 )
             }
@@ -67,19 +67,35 @@ impl Parser<'_> {
 
         match self.peek() {
             Token::LeftParen => self.skip(),
-            _ => return self.err_consume_append(id, ParserErrorKind::TODOError, &Self::ITEM_SYNC),
+            _ => {
+                return self.err_consume_append(
+                    fun_id,
+                    ParserErrorKind::ExpectedToken(Token::LeftParen),
+                    &Self::ITEM_SYNC,
+                )
+            }
         };
 
         match self.peek() {
             Token::RightParen => self.skip(),
-            _ => return self.err_consume_append(id, ParserErrorKind::TODOError, &Self::ITEM_SYNC),
+            _ => {
+                return self.err_consume_append(
+                    fun_id,
+                    ParserErrorKind::ExpectedToken(Token::RightParen),
+                    &Self::ITEM_SYNC,
+                )
+            }
         };
 
         let expr = match self.peek() {
             Token::LeftBrace => self.parse_block().expr(),
-            _ => self.err_consume_append(id, ParserErrorKind::TODOError, &Self::ITEM_SYNC),
+            _ => self.err_consume_append(
+                fun_id,
+                ParserErrorKind::ExpectedToken(Token::LeftBrace),
+                &Self::ITEM_SYNC,
+            ),
         };
 
-        Item::Fun(id, attrs, name, expr)
+        Item::Fun(fun_id, attrs, name, expr)
     }
 }

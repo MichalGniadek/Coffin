@@ -7,7 +7,10 @@ use std::path::Path;
 
 #[test]
 fn insta() {
-    glob!(r"shaders\*.coff", |path| { test_file(path, false) });
+    glob!(r"insta_parser\*.coff", |path| { test_file(path, false) });
+    glob!(r"insta_parser_spans\*.coff", |path| {
+        test_file(path, true)
+    });
 }
 
 fn test_file(path: &Path, with_spans: bool) {

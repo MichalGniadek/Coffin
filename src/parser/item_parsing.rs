@@ -7,12 +7,12 @@ use crate::{
 
 impl Parser<'_> {
     pub(super) fn parse_item(&mut self) -> Item {
-        let attrs = match self.peek() {
+        let attrs = match self.curr_token {
             Token::HashBracket => self.parse_attributes(),
             _ => Attrs::None,
         };
 
-        match self.peek() {
+        match self.curr_token {
             Token::Fun => self.parse_fun(attrs),
             _ => todo!(),
         }
@@ -22,8 +22,8 @@ impl Parser<'_> {
         let brackets_id = self.consume();
         let mut attrs = vec![];
 
-        while self.peek() != Token::RightBracket {
-            let name = match self.peek() {
+        while self.curr_token != Token::RightBracket {
+            let name = match self.curr_token {
                 Token::Identifier(s) => Name(self.consume(), s),
                 _ => {
                     return self.err_consume_append(
@@ -36,9 +36,9 @@ impl Parser<'_> {
 
             attrs.push(Attr(name, self.parse_delimited_tokens()));
 
-            if self.peek() == Token::Comma {
+            if self.curr_token == Token::Comma {
                 self.skip();
-            } else if self.peek() != Token::RightBracket {
+            } else if self.curr_token != Token::RightBracket {
                 return self.err_consume_append(
                     brackets_id,
                     ParserErrorKind::ExpectedToken(Token::RightBracket),
@@ -54,7 +54,7 @@ impl Parser<'_> {
     pub(super) fn parse_fun(&mut self, attrs: Attrs) -> Item {
         let fun_id = self.consume_expect(Token::Fun);
 
-        let name = match self.peek() {
+        let name = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
                 return self.err_consume_append(
@@ -65,7 +65,7 @@ impl Parser<'_> {
             }
         };
 
-        let paren_id = match self.peek() {
+        let paren_id = match self.curr_token {
             Token::LeftParen => self.consume(),
             _ => {
                 return self.err_consume_append(
@@ -78,7 +78,7 @@ impl Parser<'_> {
 
         let mut params = vec![];
 
-        while self.peek() != Token::RightParen {
+        while self.curr_token != Token::RightParen {
             let field = match self.parse_field(fun_id) {
                 Ok(f) => f,
                 Err(err) => return err,
@@ -86,9 +86,9 @@ impl Parser<'_> {
 
             params.push(field);
 
-            if self.peek() == Token::Comma {
+            if self.curr_token == Token::Comma {
                 self.skip();
-            } else if self.peek() != Token::RightParen {
+            } else if self.curr_token != Token::RightParen {
                 return self.err_consume_append(
                     fun_id,
                     ParserErrorKind::ExpectedToken(Token::RightParen),
@@ -97,7 +97,7 @@ impl Parser<'_> {
             }
         }
 
-        self.spans[paren_id].end = match self.peek() {
+        self.spans[paren_id].end = match self.curr_token {
             Token::RightParen => self.skip().end - 1,
             _ => {
                 return self.err_consume_append(
@@ -108,10 +108,10 @@ impl Parser<'_> {
             }
         };
 
-        let ret = if self.peek() == Token::Arrow {
+        let ret = if self.curr_token == Token::Arrow {
             let arrow_id = self.consume();
 
-            let ttpe = match self.peek() {
+            let ttpe = match self.curr_token {
                 Token::Identifier(s) => Name(self.consume(), s),
                 _ => {
                     return self.err_consume_append(
@@ -127,7 +127,7 @@ impl Parser<'_> {
             None
         };
 
-        let body = match self.peek() {
+        let body = match self.curr_token {
             Token::LeftBrace => self.parse_block().expr(),
             _ => self.err_consume_append(
                 fun_id,

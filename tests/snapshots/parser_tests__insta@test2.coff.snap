@@ -3,12 +3,10 @@ source: tests/parser_tests.rs
 expression: "ast.items.iter().map(|i|\n                         print.visit_item(i)).reduce(|a, b|\n                                                         format!(\"{}\\n{}\", a,\n                                                                 b)).unwrap()"
 
 ---
-[0..3] #[] fun[5..6]([]) "[4..5] Spur { key: 1 }"
-[7..17] {	
-	([14..15] #2)
+ fun d ()  {	
+	(#2)
 	}
-[22..39] item error [26..27] "Expected token Identifier."
-[43..46] #[] fun[50..51]([]) "[47..50] Spur { key: 2 }"
-[52..62] {	
-	([59..60] #3)
+Err: Expected token Identifier.
+ fun asd ()  {	
+	(#3)
 	}

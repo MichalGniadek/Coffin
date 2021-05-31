@@ -7,30 +7,35 @@ use crate::{
     error::{ParserError, ParserErrorKind},
     lexer::Token,
 };
-use logos::{Lexer, Span, SpannedIter};
-use std::iter::Peekable;
+use logos::{Lexer, Span};
 
 pub fn parse(lexer: Lexer<'_, Token>) -> UntypedAst {
     let mut parser = Parser {
-        lexer: lexer.spanned().peekable(),
+        lexer,
         spans: Spans::new(),
+        curr_token: Token::EOF,
+        curr_span: Span::default(),
     };
-
+    parser.advance();
     let mut items = vec![];
 
-    while parser.peek() != Token::EOF {
+    while parser.curr_token != Token::EOF {
         items.push(parser.parse_item());
     }
 
     UntypedAst {
         items,
         spans: parser.spans,
+        rodeo: parser.lexer.extras.into_resolver(),
     }
 }
 
 struct Parser<'a> {
-    lexer: Peekable<SpannedIter<'a, Token>>,
+    lexer: Lexer<'a, Token>,
     spans: Spans,
+
+    curr_token: Token,
+    curr_span: Span,
 }
 
 enum ParsedExpr {
@@ -84,28 +89,24 @@ impl Parser<'_> {
     const ITEM_SYNC: [Token; 3] = [Token::Fun, Token::HashBracket, Token::EOF];
     const EXPR_SYNC: [Token; 4] = concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
-    /// Peeks the next token.
-    fn peek(&mut self) -> Token {
-        self.lexer.peek().map_or(Token::EOF, |(t, _)| t.clone())
-    }
-
-    /// Peeks the next span.
-    fn peek_span(&mut self) -> Span {
-        self.lexer.peek().map_or(0..0, |(_, s)| s.clone())
+    /// Shouldn't be called directly.
+    fn advance(&mut self) {
+        self.curr_token = self.lexer.next().unwrap_or(Token::EOF);
+        self.curr_span = self.lexer.span();
     }
 
     /// Advances to the next token and returns the previous span.
     fn skip(&mut self) -> Span {
-        let span = self.peek_span();
-        self.lexer.next();
+        let span = self.curr_span.clone();
+        self.advance();
         span
     }
 
     /// Advances to the next token, add span to the Spans and return the
     /// corresponding id.
     fn consume(&mut self) -> Id {
-        let span = self.peek_span();
-        self.lexer.next();
+        let span = self.curr_span.clone();
+        self.advance();
         self.spans.push(span)
     }
 
@@ -113,7 +114,7 @@ impl Parser<'_> {
     /// corresponding id. Panics if the next token isn't the correct.
     fn consume_expect(&mut self, token: Token) -> Id {
         assert!(
-            self.peek() == token,
+            self.curr_token == token,
             "Compiler error: expected '{:?}' token.",
             token
         );
@@ -122,7 +123,7 @@ impl Parser<'_> {
 
     /// Consumes tokens until it get to sync token and return error variant of an AST type.
     fn err_consume<T: From<ErrorNode>>(&mut self, kind: ParserErrorKind, tokens: &[Token]) -> T {
-        let span = self.peek_span();
+        let span = self.curr_span.clone();
         let id = self.spans.push(span);
         self.err_consume_append(id, kind, tokens)
     }
@@ -135,15 +136,11 @@ impl Parser<'_> {
         kind: ParserErrorKind,
         tokens: &[Token],
     ) -> T {
-        let err_span = self.peek_span();
+        let err_span = self.curr_span.clone();
 
-        while let Some((token, span)) = self.lexer.peek() {
-            if !tokens.contains(token) {
-                self.spans[id].end = span.end;
-                self.lexer.next();
-            } else {
-                break;
-            }
+        while !tokens.contains(&self.curr_token) {
+            self.spans[id].end = self.curr_span.end;
+            self.advance();
         }
 
         ErrorNode(id, ParserError(kind, err_span)).into()
@@ -151,7 +148,7 @@ impl Parser<'_> {
 
     /// If a token isn't one of '(', '{', '[' it returns an empty vec.
     fn parse_delimited_tokens(&mut self) -> Vec<(Id, Token)> {
-        let delimiter = match self.peek() {
+        let delimiter = match self.curr_token {
             Token::LeftBrace => Token::RightBrace,
             Token::LeftBracket => Token::RightBracket,
             Token::LeftParen => Token::RightParen,
@@ -159,13 +156,13 @@ impl Parser<'_> {
         };
 
         let mut vec = vec![];
-        while self.peek() != delimiter && self.peek() != Token::EOF {
-            let token = self.peek();
+        while self.curr_token != delimiter && self.curr_token != Token::EOF {
+            let token = self.curr_token;
             let id = self.consume();
             vec.push((id, token));
         }
 
-        let token = self.peek();
+        let token = self.curr_token;
         let id = self.consume();
         vec.push((id, token));
 
@@ -174,7 +171,7 @@ impl Parser<'_> {
 
     /// In case of parsing error, err_consume_append will be called with error_id.
     fn parse_field<T: From<ErrorNode>>(&mut self, error_id: Id) -> Result<Field, T> {
-        let name = match self.peek() {
+        let name = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
                 return Err(self.err_consume_append(
@@ -185,7 +182,7 @@ impl Parser<'_> {
             }
         };
 
-        let colon_id = match self.peek() {
+        let colon_id = match self.curr_token {
             Token::Colon => self.consume(),
             _ => {
                 return Err(self.err_consume_append(
@@ -196,7 +193,7 @@ impl Parser<'_> {
             }
         };
 
-        let ttpe = match self.peek() {
+        let ttpe = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
                 return Err(self.err_consume_append(

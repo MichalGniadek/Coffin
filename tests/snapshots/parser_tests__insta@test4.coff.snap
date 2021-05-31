@@ -3,6 +3,5 @@ source: tests/parser_tests.rs
 expression: "ast.items.iter().map(|i|\n                         print.visit_item(i)).reduce(|a, b|\n                                                         format!(\"{}\\n{}\", a,\n                                                                 b)).unwrap()"
 
 ---
-[0..3] #[] fun[7..31]([Field { name: Name(Id(3), Spur { key: 2 }), colon_id: Id(4), ttpe: Name(Id(5), Spur { key: 3 }) }, Field { name: Name(Id(6), Spur { key: 4 }), colon_id: Id(7), ttpe: Name(Id(8), Spur { key: 5 }) }]) -> sth "[4..7] Spur { key: 1 }"
-[40..41] {	
+ fun asd (parm1 : Tt1, param2 : Tt2, ) -> i32 {	
 	}

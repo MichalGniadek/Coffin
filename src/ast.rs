@@ -1,5 +1,5 @@
 use crate::{error::ParserError, lexer::Token};
-use lasso::Spur;
+use lasso::{RodeoResolver, Spur};
 use logos::Span;
 use std::{
     num::NonZeroU32,
@@ -10,6 +10,7 @@ use std::{
 pub struct UntypedAst {
     pub items: Vec<Item>,
     pub spans: Spans,
+    pub rodeo: RodeoResolver,
 }
 
 #[derive(Debug, Clone, Copy)]

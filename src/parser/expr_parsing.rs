@@ -1,4 +1,4 @@
-use super::{Parser, ParsedExpr};
+use super::{ParsedExpr, Parser};
 use crate::{
     ast::{BinOpKind, Expr},
     error::ParserErrorKind,
@@ -16,7 +16,7 @@ impl Parser<'_> {
     }
 
     pub(super) fn parse_prefix(&mut self) -> ParsedExpr {
-        match self.peek() {
+        match self.curr_token {
             Token::Int(i) => Good(Expr::Int(self.consume(), i)),
             Token::LeftBrace => self.parse_block(),
             _ => Panic(self.err_consume(ParserErrorKind::ExpectedPrefixToken, &Self::EXPR_SYNC)),
@@ -29,7 +29,7 @@ impl Parser<'_> {
         let mut exprs = Vec::new();
 
         loop {
-            if self.peek() == Token::RightBrace {
+            if self.curr_token == Token::RightBrace {
                 self.spans[id].end = self.skip().end - 1;
                 return Good(Expr::Block(id, exprs));
             }
@@ -37,7 +37,7 @@ impl Parser<'_> {
             let (expr, is_panic) = self.parse_expr(0).destruct();
             exprs.push(expr);
 
-            if is_panic && self.peek() != Token::RightBrace {
+            if is_panic && self.curr_token != Token::RightBrace {
                 self.spans[id].end = self.spans[id].start;
                 return Panic(Expr::Block(id, exprs));
             }
@@ -50,7 +50,7 @@ impl Parser<'_> {
         const _RIGHT: u8 = 1;
 
         loop {
-            tree = match self.peek() {
+            tree = match self.curr_token {
                 // Token::T if binding_power + associativity > min_binding_power
                 Token::Plus if 10 + LEFT > min_binding_power => Expr::Binary(
                     self.consume(),

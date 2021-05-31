@@ -30,6 +30,7 @@ impl<'a> Visitor for PrettyPrint<'a> {
         name: Name,
         paren_id: Id,
         params: &Vec<Field>,
+        ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
         let attr_text = match attrs {
@@ -47,12 +48,18 @@ impl<'a> Visitor for PrettyPrint<'a> {
             ),
         };
 
+        let ret_text = match ret {
+            Some((_, _)) => " -> sth",
+            None => "",
+        };
+
         format!(
-            "[{:?}] #[{}] fun[{:?}]({:?}) \"[{:?}] {:?}\"\n{}",
+            "[{:?}] #[{}] fun[{:?}]({:?}){} \"[{:?}] {:?}\"\n{}",
             self.spans[fun_id],
             attr_text,
             self.spans[paren_id],
             params,
+            ret_text,
             self.spans[name.0],
             name.1,
             self.visit_expr(body)

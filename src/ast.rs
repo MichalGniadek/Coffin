@@ -64,6 +64,7 @@ pub enum Item {
         name: Name,
         paren_id: Id,
         params: Vec<Field>,
+        ret: Option<(Id, Name)>,
         body: Expr,
     },
     Error(Id, ParserError),
@@ -113,8 +114,9 @@ pub trait Visitor {
                 name,
                 paren_id,
                 params,
+                ret,
                 body,
-            } => self.fun(*fun_id, attrs, *name, *paren_id, params, body),
+            } => self.fun(*fun_id, attrs, *name, *paren_id, params, ret, body),
             Item::Error(id, kind) => self.item_error(*id, kind),
         }
     }
@@ -138,6 +140,7 @@ pub trait Visitor {
         name: Name,
         paren_id: Id,
         params: &Vec<Field>,
+        ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out;
     fn item_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;

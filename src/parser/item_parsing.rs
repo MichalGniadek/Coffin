@@ -108,6 +108,25 @@ impl Parser<'_> {
             }
         };
 
+        let ret = if self.peek() == Token::Arrow {
+            let arrow_id = self.consume();
+
+            let ttpe = match self.peek() {
+                Token::Identifier(s) => Name(self.consume(), s),
+                _ => {
+                    return self.err_consume_append(
+                        fun_id,
+                        ParserErrorKind::expected_identifier(),
+                        &Self::ITEM_SYNC,
+                    )
+                }
+            };
+
+            Some((arrow_id, ttpe))
+        } else {
+            None
+        };
+
         let body = match self.peek() {
             Token::LeftBrace => self.parse_block().expr(),
             _ => self.err_consume_append(
@@ -123,6 +142,7 @@ impl Parser<'_> {
             name,
             paren_id,
             params,
+            ret,
             body,
         }
     }

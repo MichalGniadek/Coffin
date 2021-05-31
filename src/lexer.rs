@@ -66,6 +66,9 @@ pub enum Token {
     Less,
     #[token("<=")]
     LessEqual,
+    /// ->
+    #[token("->")]
+    Arrow,
 
     #[regex(r"[_a-zA-Z][_a-zA-Z0-9]*", |lex| lex.extras.get_or_intern(lex.slice()))]
     Identifier(Spur),
@@ -127,6 +130,7 @@ impl Display for Token {
             Token::GreaterEqual => write!(f, "'>='"),
             Token::Less => write!(f, "'<'"),
             Token::LessEqual => write!(f, "'<='"),
+            Token::Arrow => write!(f, "'->'"),
             Token::Identifier(_) => write!(f, "Identifier"),
             Token::Int(_) => write!(f, "Int"),
             Token::Else => write!(f, "'else'"),

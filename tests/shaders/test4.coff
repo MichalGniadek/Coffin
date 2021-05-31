@@ -1,1 +1,1 @@
-fun asd(parm1: Tt1, param2: Tt2){}
+fun asd(parm1: Tt1, param2: Tt2) -> i32 {}

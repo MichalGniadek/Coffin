@@ -102,7 +102,7 @@ impl<'a> Visitor for PrettyPrint<'a> {
         };
 
         format!(
-            "{} {}fun {} {}({}) {} {}",
+            "{}{}fun {} {}({}) {} {}",
             attr_text,
             self.span(fun_id),
             self.name(name),
@@ -154,21 +154,12 @@ impl<'a> Visitor for PrettyPrint<'a> {
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
         self.indent.push('\t');
         let indent = self.indent.clone();
-
-        let out = format!(
-            "{}{{{}\n{}}}",
-            self.span(id),
-            exprs.iter().fold(indent.clone(), |a, e| format!(
-                "{}\n{}{}",
-                a,
-                indent,
-                self.visit_expr(e)
-            )),
-            indent
-        );
-
+        let body = exprs.iter().fold("".to_owned(), |a, e| {
+            format!("{}\n{}{}", a, indent, self.visit_expr(e))
+        });
         self.indent.pop();
-        out
+
+        format!("{}{{{}\n{}}}", self.span(id), body, self.indent)
     }
 
     fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {

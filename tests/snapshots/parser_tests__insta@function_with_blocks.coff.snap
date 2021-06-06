@@ -6,13 +6,13 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 fun asd ()  {
 	{
 		{
-			(#1)
+			#1
 		}
 		{
 			Err: Expected prefix token.
 		}
 		{
-			(#3)
+			#3
 		}
 	}
 }

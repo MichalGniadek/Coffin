@@ -4,9 +4,9 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 
 ---
 fun d ()  {
-	(#2)
+	#2
 }
 Err: Expected token Identifier.
 fun asd ()  {
-	(#3)
+	#3
 }

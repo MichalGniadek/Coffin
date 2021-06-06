@@ -4,6 +4,6 @@ expression: "ast.items.iter().map(|i|\n                         print.visit_item
 
 ---
 fun asd ()  {
-	((#2) + (#3))
-	(#2)
+	(#2 + #3)
+	#2
 }

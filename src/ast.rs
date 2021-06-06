@@ -102,6 +102,7 @@ pub enum BinOpKind {
     Div,
     Rem,
     Pow,
+    Eq,
 }
 
 pub trait Visitor {

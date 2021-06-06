@@ -47,18 +47,32 @@ impl Parser<'_> {
     pub(super) fn parse_infix(&mut self, mut tree: Expr, min_binding_power: u8) -> ParsedExpr {
         // Associativity
         const LEFT: u8 = 0;
-        const _RIGHT: u8 = 1;
+        const RIGHT: u8 = 1;
 
         loop {
-            tree = match self.curr_token {
-                // Token::T if binding_power + associativity > min_binding_power
-                Token::Plus if 10 + LEFT > min_binding_power => Expr::Binary(
-                    self.consume(),
-                    BinOpKind::Add,
-                    Box::new(tree),
-                    Box::new(self.parse_expr(10).expr()),
-                ),
+            let (binding_power, assoc, kind) = match self.curr_token {
+                Token::DoubleEqual => (5, RIGHT, BinOpKind::Eq),
+                Token::Plus => (10, LEFT, BinOpKind::Add),
+                Token::Minus => (10, LEFT, BinOpKind::Sub),
+                Token::Star => (20, LEFT, BinOpKind::Mul),
+                Token::Slash => (20, LEFT, BinOpKind::Div),
+                Token::Percent => (20, LEFT, BinOpKind::Rem),
+                Token::DoubleStar => (30, RIGHT, BinOpKind::Pow),
+                Token::LeftParen | Token::LeftBracket | Token::Dot => {
+                    todo!("Function call, indexing, dot operators not implemented.")
+                }
                 _ => break,
+            };
+
+            if binding_power + assoc > min_binding_power {
+                let id = self.consume();
+                let (expr, is_panic) = self.parse_expr(binding_power).destruct();
+                tree = Expr::Binary(id, kind, Box::new(tree), Box::new(expr));
+                if is_panic {
+                    return Panic(tree);
+                }
+            } else {
+                break;
             }
         }
 

@@ -125,6 +125,7 @@ impl<'a> Visitor for PrettyPrint<'a> {
             BinOpKind::Div => "/",
             BinOpKind::Rem => "%",
             BinOpKind::Pow => "**",
+            BinOpKind::Eq => "==",
         };
 
         let left = self.visit_expr(left);
@@ -140,15 +141,15 @@ impl<'a> Visitor for PrettyPrint<'a> {
     }
 
     fn identifier(&mut self, id: Id, identifier: Spur) -> Self::Out {
-        format!("({}${})", self.span(id), self.ident(identifier))
+        format!("{}${}", self.span(id), self.ident(identifier))
     }
 
     fn float(&mut self, id: Id, f: f32) -> Self::Out {
-        format!("({}#{})", self.span(id), f)
+        format!("{}#{}", self.span(id), f)
     }
 
     fn int(&mut self, id: Id, i: i32) -> Self::Out {
-        format!("({}#{})", self.span(id), i)
+        format!("{}#{}", self.span(id), i)
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {

@@ -3,6 +3,8 @@ pub mod error;
 pub mod lexer;
 pub mod parser;
 pub mod pretty_print;
+pub mod type_resolver;
+pub mod name_resolution;
 
 use assembler::{Assembler, DisassembleOptions};
 use codespan_reporting::{
@@ -35,7 +37,7 @@ pub fn show_err(path: &PathBuf, err: CoffinError) {
 pub fn compile_file(path: &PathBuf) -> Result<Vec<u32>, CoffinError> {
     let code = fs::read_to_string(path)?;
     let lexer = Token::lexer(&code);
-    parser::parse(lexer);
+    let _ast = parser::parse(lexer);
     // let _print = pretty_print::PrettyPrint::new();
     // for err in errors{
     //     show_err(path, err.into());

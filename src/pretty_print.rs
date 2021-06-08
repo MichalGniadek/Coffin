@@ -22,10 +22,8 @@ impl<'a> PrettyPrint<'a> {
     }
 
     fn span(&self, id: Id) -> String {
-        match self.spans {
-            Some(s) => format!("[{:?}] ", s[id]),
-            None => "".to_owned(),
-        }
+        self.spans
+            .map_or("".to_owned(), |s| format!("[{:?}] ", s[id]))
     }
 
     fn ident(&self, spur: Spur) -> &str {
@@ -53,7 +51,7 @@ impl<'a> PrettyPrint<'a> {
     }
 }
 
-impl<'a> Visitor for PrettyPrint<'a> {
+impl Visitor for PrettyPrint<'_> {
     type Out = String;
 
     fn fun(
@@ -131,17 +129,40 @@ impl<'a> Visitor for PrettyPrint<'a> {
         let left = self.visit_expr(left);
         let right = self.visit_expr(right);
 
-        format!("({}{} {} {})", self.span(id), left, symbol, right)
+        format!("({} {}{} {})", left, self.span(id), symbol, right)
+    }
+
+    fn r#let(
+        &mut self,
+        let_id: Id,
+        mut_id: Option<Id>,
+        name: Name,
+        eq_id: Id,
+        expr: &Expr,
+    ) -> Self::Out {
+        let expr = self.visit_expr(expr);
+        let r#mut = match mut_id {
+            Some(id) => format!(" {}mut", self.span(id)),
+            None => "".to_owned(),
+        };
+        format!(
+            "({}let{} {} {}= {})",
+            self.span(let_id),
+            r#mut,
+            self.name(name),
+            self.span(eq_id),
+            expr
+        )
     }
 
     fn assign(&mut self, id: Id, left: &Expr, right: &Expr) -> Self::Out {
         let left = self.visit_expr(left);
         let right = self.visit_expr(right);
-        format!("({}let {} = {})", self.span(id), left, right)
+        format!("({} {}= {})", self.span(id), left, right)
     }
 
-    fn identifier(&mut self, id: Id, identifier: Spur) -> Self::Out {
-        format!("{}${}", self.span(id), self.ident(identifier))
+    fn identifier(&mut self, name: Name) -> Self::Out {
+        format!("${}", self.name(name))
     }
 
     fn float(&mut self, id: Id, f: f32) -> Self::Out {

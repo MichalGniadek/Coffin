@@ -93,6 +93,8 @@ pub enum Token {
     Loop,
     #[token("let")]
     Let,
+    #[token("mut")]
+    Mut,
     #[token("spirv")]
     Spirv,
     #[regex(r"//.*")]
@@ -142,6 +144,7 @@ impl Display for Token {
             Token::Struct => write!(f, "'struct'"),
             Token::Loop => write!(f, "'loop'"),
             Token::Let => write!(f, "'let'"),
+            Token::Mut => write!(f, "'mut'"),
             Token::Spirv => write!(f, "'spirv'"),
             Token::Comment => write!(f, "'//'"),
             Token::EOF => write!(f, "EOF"),

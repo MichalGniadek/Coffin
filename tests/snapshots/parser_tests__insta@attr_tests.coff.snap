@@ -1,0 +1,9 @@
+---
+source: tests/parser_tests.rs
+expression: "ast.items.iter().map(|i|\n                         print.visit_item(i)).reduce(|a, b|\n                                                         format!(\"{}\\n{}\", a,\n                                                                 b)).unwrap()"
+
+---
+#[attr1(), attr2('(' Identifier '{' '}' Int ')' ), ]fun test ()  {
+}
+#[Err: Expected token ']'.]fun test ()  {
+}

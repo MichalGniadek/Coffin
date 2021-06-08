@@ -1,11 +1,21 @@
-mod ast;
-mod error;
-mod lexer;
-mod parser;
-mod pretty_print;
+pub mod ast;
+pub mod error;
+pub mod lexer;
+pub mod parser;
+pub mod pretty_print;
+pub mod type_resolver;
+pub mod name_resolution;
+pub mod ast_span;
 
 use assembler::{Assembler, DisassembleOptions};
-use codespan_reporting::{files::SimpleFile, term::{self, Config, termcolor::{ColorChoice, StandardStream}}};
+use codespan_reporting::{
+    files::SimpleFile,
+    term::{
+        self,
+        termcolor::{ColorChoice, StandardStream},
+        Config,
+    },
+};
 use error::CoffinError;
 use lexer::Token;
 use logos::Logos;
@@ -28,11 +38,11 @@ pub fn show_err(path: &PathBuf, err: CoffinError) {
 pub fn compile_file(path: &PathBuf) -> Result<Vec<u32>, CoffinError> {
     let code = fs::read_to_string(path)?;
     let lexer = Token::lexer(&code);
-    let (_ast, errors) = parser::parse(lexer);
-    let _print = pretty_print::PrettyPrint::new();
-    for err in errors{
-        show_err(path, err.into());
-    }
+    let _ast = parser::parse(lexer);
+    // let _print = pretty_print::PrettyPrint::new();
+    // for err in errors{
+    //     show_err(path, err.into());
+    // }
     // println!(
     //     "{}",
     //     pretty_print::PrettyPrint::new().visit_expr(&ast.temp_root)

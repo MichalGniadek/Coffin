@@ -1,0 +1,8 @@
+fun asd(parm1: Tt1, param2: Tt2) -> i32 {
+    {
+        2+2
+    }
+    {
+        + 3
+    }
+}

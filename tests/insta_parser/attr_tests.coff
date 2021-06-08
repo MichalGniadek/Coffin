@@ -1,0 +1,5 @@
+#[attr1, attr2(asd {} 123)]
+fun test(){}
+
+#[attr)]
+fun test(){}

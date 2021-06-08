@@ -39,10 +39,10 @@ fn main() {
     let mut out = opt.output.clone().unwrap_or(opt.input.clone());
     out.set_extension("spv");
 
-    write_spirv_binary(&spirv, &out).unwrap();
+    // write_spirv_binary(&spirv, &out).unwrap();
 
     if opt.disassemble {
         out.set_extension("spv_diss");
-        write_spirv_diss(&spirv, &out).unwrap();
+        // write_spirv_diss(&spirv, &out).unwrap();
     }
 }

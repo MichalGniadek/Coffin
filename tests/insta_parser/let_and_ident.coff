@@ -1,0 +1,7 @@
+fun a(){
+    let asd = 123
+    let mut fgh = 345 + asd
+    {let mut = 123}
+    {let mut asd 123}
+    {let mut asd =}
+}

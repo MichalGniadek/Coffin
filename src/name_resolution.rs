@@ -1,26 +1,40 @@
 use crate::{
-    ast::{Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
+    ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     error::ParserError,
 };
 use lasso::Spur;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, Clone, Copy)]
 pub struct VariableId(usize);
 
+impl Display for VariableId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub type VariablesTable = HashMap<Id, VariableId>;
+
 pub struct NameResolution {
-    variables: HashMap<Id, VariableId>,
+    variables: VariablesTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
     curr_var_id: usize,
 }
 
 impl NameResolution {
-    pub fn new() -> Self {
-        Self {
+    pub fn visit(ast: &Ast) -> VariablesTable {
+        let mut slf = Self {
             variables: HashMap::new(),
-            scopes: vec![HashMap::new()],
+            scopes: vec![],
             curr_var_id: 0,
+        };
+
+        for item in ast {
+            slf.visit_item(item);
         }
+
+        slf.variables
     }
 
     pub fn new_variable(&mut self, name: Name) {
@@ -43,12 +57,13 @@ impl Visitor for NameResolution {
         _paren_id: Id,
         params: &Vec<Field>,
         _ret: &Option<(Id, Name)>,
-        _body: &Expr,
+        body: &Expr,
     ) -> Self::Out {
         self.scopes.push(HashMap::new());
         for param in params {
             self.new_variable(param.name);
         }
+        self.visit_expr(body);
         self.scopes.pop();
     }
 
@@ -58,19 +73,21 @@ impl Visitor for NameResolution {
         _mut_id: Option<Id>,
         name: Name,
         _eq_id: Id,
-        _expr: &Expr,
+        expr: &Expr,
     ) -> Self::Out {
+        self.visit_expr(expr);
         self.new_variable(name);
     }
 
     fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
+        self.visit_expr(right);
+
         for scope in self.scopes.iter().rev() {
             if let Some(&var_id) = scope.get(&name.1) {
                 self.variables.insert(name.0, var_id);
                 return;
             }
         }
-        self.visit_expr(right);
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {

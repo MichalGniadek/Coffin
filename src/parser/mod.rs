@@ -3,16 +3,17 @@ mod expr_parsing;
 mod item_parsing;
 
 use crate::{
-    ast::{Expr, Field, Id, Name, Spans, UntypedAst},
+    ast::{Ast, Expr, Field, Id, Name, SpansTable},
     error::{ParserError, ParserErrorKind},
     lexer::Token,
 };
+use lasso::RodeoResolver;
 use logos::{Lexer, Span};
 
-pub fn parse(lexer: Lexer<'_, Token>) -> UntypedAst {
+pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
     let mut parser = Parser {
         lexer,
-        spans: Spans::new(),
+        spans: SpansTable::new(),
         curr_token: Token::EOF,
         curr_span: Span::default(),
     };
@@ -23,16 +24,12 @@ pub fn parse(lexer: Lexer<'_, Token>) -> UntypedAst {
         items.push(parser.parse_item());
     }
 
-    UntypedAst {
-        items,
-        spans: parser.spans,
-        rodeo: parser.lexer.extras.into_resolver(),
-    }
+    (Ast(items), parser.spans, parser.lexer.extras.into_resolver())
 }
 
 struct Parser<'a> {
     lexer: Lexer<'a, Token>,
-    spans: Spans,
+    spans: SpansTable,
 
     curr_token: Token,
     curr_span: Span,

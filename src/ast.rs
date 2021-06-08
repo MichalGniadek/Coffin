@@ -1,25 +1,26 @@
 use crate::{error::ParserError, lexer::Token};
-use lasso::{RodeoResolver, Spur};
+use lasso::Spur;
 use logos::Span;
-use std::{
-    num::NonZeroU32,
-    ops::{Index, IndexMut},
-};
+use std::{num::NonZeroU32, ops::{Index, IndexMut}, slice};
 
-#[derive(Debug)]
-pub struct UntypedAst {
-    pub items: Vec<Item>,
-    pub spans: Spans,
-    pub rodeo: RodeoResolver,
+pub struct Ast(pub Vec<Item>);
+
+impl<'a> IntoIterator for &'a Ast {
+    type Item = &'a Item;
+    type IntoIter = slice::Iter<'a, Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub usize);
 
 #[derive(Debug, Clone)]
-pub struct Spans(Vec<Span>);
+pub struct SpansTable(Vec<Span>);
 
-impl Spans {
+impl SpansTable {
     pub fn new() -> Self {
         Self(vec![])
     }
@@ -30,7 +31,7 @@ impl Spans {
     }
 }
 
-impl Index<Id> for Spans {
+impl Index<Id> for SpansTable {
     type Output = Span;
 
     fn index(&self, index: Id) -> &Self::Output {
@@ -38,7 +39,7 @@ impl Index<Id> for Spans {
     }
 }
 
-impl IndexMut<Id> for Spans {
+impl IndexMut<Id> for SpansTable {
     fn index_mut(&mut self, index: Id) -> &mut Self::Output {
         &mut self.0[index.0 as usize]
     }

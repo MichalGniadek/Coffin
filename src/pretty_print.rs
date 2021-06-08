@@ -1,33 +1,50 @@
 use crate::{
-    ast::{self, Attrs, Field, Spans, Visitor},
+    ast::{self, Ast, Attrs, Field, SpansTable, Visitor},
     error::ParserError,
+    name_resolution::VariablesTable,
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};
 
-pub struct PrettyPrint<'a> {
-    rodeo: RodeoResolver,
-    spans: Option<&'a Spans>,
+pub struct DebugPrint<'a, 'b, 'c> {
+    rodeo: Option<&'a RodeoResolver>,
+    spans: Option<&'b SpansTable>,
+    variables: Option<&'c VariablesTable>,
     indent: String,
 }
 
-impl<'a> PrettyPrint<'a> {
-    #![allow(dead_code)]
-    pub fn new(rodeo: RodeoResolver, spans: Option<&'a Spans>) -> Self {
-        Self {
+impl<'a, 'b, 'c> DebugPrint<'a, 'b, 'c> {
+    pub fn visit(
+        ast: &Ast,
+        rodeo: Option<&'a RodeoResolver>,
+        spans: Option<&'b SpansTable>,
+        variables: Option<&'c VariablesTable>,
+    ) -> String {
+        let mut slf = Self {
             rodeo,
+            variables,
             spans,
             indent: String::new(),
-        }
-    }
+        };
 
+        ast.into_iter()
+            .map(|i| slf.visit_item(i))
+            .reduce(|a, b| format!("{}\n{}", a, b))
+            .unwrap_or(String::new())
+    }
+}
+
+impl DebugPrint<'_, '_, '_> {
     fn span(&self, id: Id) -> String {
         self.spans
             .map_or("".to_owned(), |s| format!("[{:?}] ", s[id]))
     }
 
-    fn ident(&self, spur: Spur) -> &str {
-        self.rodeo.resolve(&spur)
+    fn ident(&self, spur: Spur) -> String {
+        match self.rodeo {
+            Some(r) => r.resolve(&spur).to_owned(),
+            None => format!("{:?}", spur),
+        }
     }
 
     fn err(&self, err: &ParserError) -> String {
@@ -38,7 +55,17 @@ impl<'a> PrettyPrint<'a> {
     }
 
     fn name(&self, name: Name) -> String {
-        format!("{}{}", self.span(name.0), self.ident(name.1))
+        let var_string = match self.variables {
+            Some(map) => {
+                if let Some(var_id) = map.get(&name.0) {
+                    format!("@{}", var_id)
+                } else {
+                    "@X".to_owned()
+                }
+            }
+            None => "".to_owned(),
+        };
+        format!("{}{}{}", self.span(name.0), self.ident(name.1), var_string)
     }
 
     fn field(&self, field: &Field) -> String {
@@ -51,7 +78,7 @@ impl<'a> PrettyPrint<'a> {
     }
 }
 
-impl Visitor for PrettyPrint<'_> {
+impl Visitor for DebugPrint<'_, '_, '_> {
     type Out = String;
 
     fn fun(

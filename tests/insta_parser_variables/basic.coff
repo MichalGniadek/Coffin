@@ -1,0 +1,22 @@
+fun fn0(arg0: T, arg1: T){
+    let var0 = 0
+    var0 = arg0
+    {
+        arg0 = 1
+        let arg0 = 2
+        arg0 = 3
+    }
+    arg0 = 4
+    let var1 = 5
+    var1 = 6
+    let var1 = 7
+    var1 = 8
+    arg0 = 9
+}
+
+fun fn1(arg2: T){
+    let var1 = 0
+    var1 = var1 + 1
+    let var1 = var1 + 1
+    var1 = var1 + 1
+}

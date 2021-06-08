@@ -1,28 +1,28 @@
-use coffin2::parser;
-use coffin2::{ast::Visitor, lexer::Token, pretty_print::PrettyPrint};
+use coffin2::{ast::{Ast, SpansTable}, lexer::Token, name_resolution::NameResolution, parser, pretty_print::DebugPrint};
 use insta::{assert_snapshot, glob};
+use lasso::RodeoResolver;
 use logos::Logos;
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
+
+fn get_ast(path: &Path) -> (Ast, SpansTable, RodeoResolver) {
+    let code = fs::read_to_string(path).unwrap();
+    let lexer = Token::lexer(&code);
+    parser::parse(lexer)
+}
 
 #[test]
 fn insta() {
-    glob!(r"insta_parser\*.coff", |path| { test_file(path, false) });
-    glob!(r"insta_parser_spans\*.coff", |path| {
-        test_file(path, true)
+    glob!(r"insta_parser\*.coff", |path| {
+        let (ast, _, rodeo) = get_ast(path);
+        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, None));
     });
-}
-
-fn test_file(path: &Path, with_spans: bool) {
-    let code = fs::read_to_string(path).unwrap();
-    let lexer = Token::lexer(&code);
-    let ast = parser::parse(lexer);
-    let spans = if with_spans { Some(&ast.spans) } else { None };
-    let mut print = PrettyPrint::new(ast.rodeo, spans);
-    assert_snapshot!(ast
-        .items
-        .iter()
-        .map(|i| print.visit_item(i))
-        .reduce(|a, b| format!("{}\n{}", a, b))
-        .unwrap());
+    glob!(r"insta_parser_spans\*.coff", |path| {
+        let (ast, spans, rodeo) = get_ast(path);
+        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None));
+    });
+    glob!(r"insta_parser_variables\*.coff", |path| {
+        let (ast, _, rodeo) = get_ast(path);
+        let vars = NameResolution::visit(&ast);
+        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars)));
+    });
 }

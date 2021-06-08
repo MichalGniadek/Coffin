@@ -113,7 +113,7 @@ impl Visitor for TypeResolver {
         todo!()
     }
 
-    fn assign(&mut self, __id: Id, __left: &Expr, __right: &Expr) -> Self::Out {
+    fn assign(&mut self, __id: Id, __name: Name, __right: &Expr) -> Self::Out {
         todo!()
     }
 

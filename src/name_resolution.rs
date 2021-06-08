@@ -63,8 +63,14 @@ impl Visitor for NameResolution {
         self.new_variable(name);
     }
 
-    fn assign(&mut self, _id: Id, _left: &Expr, _right: &Expr) -> Self::Out {
-        todo!()
+    fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
+        for scope in self.scopes.iter().rev() {
+            if let Some(&var_id) = scope.get(&name.1) {
+                self.variables.insert(name.0, var_id);
+                return;
+            }
+        }
+        self.visit_expr(right);
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {

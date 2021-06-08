@@ -35,6 +35,8 @@ pub enum ParserErrorKind {
     ExpectedPrefixToken,
     #[error("Expected token {0}.")]
     ExpectedToken(Token),
+    #[error("Expression not assignable.")]
+    ExpressionNotAssignable,
 }
 
 impl ParserErrorKind {

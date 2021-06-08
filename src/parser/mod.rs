@@ -121,29 +121,34 @@ impl Parser<'_> {
         self.consume()
     }
 
-    /// Consumes tokens until it get to sync token and return error variant of an AST type.
-    fn err_consume<T: From<ErrorNode>>(&mut self, kind: ParserErrorKind, tokens: &[Token]) -> T {
-        let span = self.curr_span.clone();
-        let id = self.spans.push(span);
-        self.err_consume_append(id, kind, tokens)
-    }
-
-    /// Consumes tokens until it get to sync token and return error variant of an AST type.
-    /// The id of the node will be the same as the passed one.
-    fn err_consume_append<T: From<ErrorNode>>(
+    fn err_consume<I, S, T>(
         &mut self,
-        id: Id,
+        ast_node_id: I,
         kind: ParserErrorKind,
-        tokens: &[Token],
-    ) -> T {
-        let err_span = self.curr_span.clone();
+        err_span: S,
+        sync_tokens: &[Token],
+    ) -> T
+    where
+        I: Into<Option<Id>>,
+        S: Into<Option<Span>>,
+        T: From<ErrorNode>,
+    {
+        let ast_node_id = match ast_node_id.into() {
+            Some(id) => id,
+            None => self.spans.push(self.curr_span.clone()),
+        };
 
-        while !tokens.contains(&self.curr_token) {
-            self.spans[id].end = self.curr_span.end;
+        let err_span = match err_span.into() {
+            Some(span) => span,
+            None => self.curr_span.clone(),
+        };
+
+        while !sync_tokens.contains(&self.curr_token) {
+            self.spans[ast_node_id].end = self.curr_span.end;
             self.advance();
         }
 
-        ErrorNode(id, ParserError(kind, err_span)).into()
+        ErrorNode(ast_node_id, ParserError(kind, err_span)).into()
     }
 
     /// If a token isn't one of '(', '{', '[' it returns an empty vec.
@@ -169,14 +174,14 @@ impl Parser<'_> {
         vec
     }
 
-    /// In case of parsing error, err_consume_append will be called with error_id.
-    fn parse_field<T: From<ErrorNode>>(&mut self, error_id: Id) -> Result<Field, T> {
+    fn parse_field<T: From<ErrorNode>>(&mut self, ast_node_id: Id) -> Result<Field, T> {
         let name = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
-                return Err(self.err_consume_append(
-                    error_id,
+                return Err(self.err_consume(
+                    ast_node_id,
                     ParserErrorKind::expected_identifier(),
+                    None,
                     &Self::ITEM_SYNC,
                 ))
             }
@@ -185,9 +190,10 @@ impl Parser<'_> {
         let colon_id = match self.curr_token {
             Token::Colon => self.consume(),
             _ => {
-                return Err(self.err_consume_append(
-                    error_id,
+                return Err(self.err_consume(
+                    ast_node_id,
                     ParserErrorKind::ExpectedToken(Token::Colon),
+                    None,
                     &Self::ITEM_SYNC,
                 ))
             }
@@ -196,9 +202,10 @@ impl Parser<'_> {
         let ttpe = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
-                return Err(self.err_consume_append(
-                    error_id,
+                return Err(self.err_consume(
+                    ast_node_id,
                     ParserErrorKind::expected_identifier(),
+                    None,
                     &Self::ITEM_SYNC,
                 ))
             }

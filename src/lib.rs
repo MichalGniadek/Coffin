@@ -5,6 +5,7 @@ pub mod parser;
 pub mod pretty_print;
 pub mod type_resolver;
 pub mod name_resolution;
+pub mod ast_span;
 
 use assembler::{Assembler, DisassembleOptions};
 use codespan_reporting::{

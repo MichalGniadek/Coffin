@@ -124,6 +124,9 @@ impl Visitor for PrettyPrint<'_> {
             BinOpKind::Rem => "%",
             BinOpKind::Pow => "**",
             BinOpKind::Eq => "==",
+            BinOpKind::Assign => {
+                panic!("Internal compiler error: Assign binary kind shouldn't be an binary node.")
+            }
         };
 
         let left = self.visit_expr(left);
@@ -155,10 +158,9 @@ impl Visitor for PrettyPrint<'_> {
         )
     }
 
-    fn assign(&mut self, id: Id, left: &Expr, right: &Expr) -> Self::Out {
-        let left = self.visit_expr(left);
+    fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
         let right = self.visit_expr(right);
-        format!("({} {}= {})", self.span(id), left, right)
+        format!("({} {}= {})", self.name(name), self.span(id), right)
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {

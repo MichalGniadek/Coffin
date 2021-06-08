@@ -26,9 +26,10 @@ impl Parser<'_> {
             let name = match self.curr_token {
                 Token::Identifier(s) => Name(self.consume(), s),
                 _ => {
-                    return self.err_consume_append(
+                    return self.err_consume(
                         brackets_id,
                         ParserErrorKind::expected_identifier(),
+                        None,
                         &Self::ITEM_SYNC,
                     )
                 }
@@ -39,9 +40,10 @@ impl Parser<'_> {
             if self.curr_token == Token::Comma {
                 self.skip();
             } else if self.curr_token != Token::RightBracket {
-                return self.err_consume_append(
+                return self.err_consume(
                     brackets_id,
                     ParserErrorKind::ExpectedToken(Token::RightBracket),
+                    None,
                     &Self::ITEM_SYNC,
                 );
             }
@@ -57,9 +59,10 @@ impl Parser<'_> {
         let name = match self.curr_token {
             Token::Identifier(s) => Name(self.consume(), s),
             _ => {
-                return self.err_consume_append(
+                return self.err_consume(
                     fun_id,
                     ParserErrorKind::expected_identifier(),
+                    None,
                     &Self::ITEM_SYNC,
                 )
             }
@@ -68,9 +71,10 @@ impl Parser<'_> {
         let paren_id = match self.curr_token {
             Token::LeftParen => self.consume(),
             _ => {
-                return self.err_consume_append(
+                return self.err_consume(
                     fun_id,
                     ParserErrorKind::ExpectedToken(Token::LeftParen),
+                    None,
                     &Self::ITEM_SYNC,
                 )
             }
@@ -89,9 +93,10 @@ impl Parser<'_> {
             if self.curr_token == Token::Comma {
                 self.skip();
             } else if self.curr_token != Token::RightParen {
-                return self.err_consume_append(
+                return self.err_consume(
                     fun_id,
                     ParserErrorKind::ExpectedToken(Token::RightParen),
+                    None,
                     &Self::ITEM_SYNC,
                 );
             }
@@ -100,9 +105,10 @@ impl Parser<'_> {
         self.spans[paren_id].end = match self.curr_token {
             Token::RightParen => self.skip().end - 1,
             _ => {
-                return self.err_consume_append(
+                return self.err_consume(
                     fun_id,
                     ParserErrorKind::ExpectedToken(Token::RightParen),
+                    None,
                     &Self::ITEM_SYNC,
                 )
             }
@@ -114,9 +120,10 @@ impl Parser<'_> {
             let ttpe = match self.curr_token {
                 Token::Identifier(s) => Name(self.consume(), s),
                 _ => {
-                    return self.err_consume_append(
+                    return self.err_consume(
                         fun_id,
                         ParserErrorKind::expected_identifier(),
+                        None,
                         &Self::ITEM_SYNC,
                     )
                 }
@@ -129,9 +136,10 @@ impl Parser<'_> {
 
         let body = match self.curr_token {
             Token::LeftBrace => self.parse_block().expr(),
-            _ => self.err_consume_append(
+            _ => self.err_consume(
                 fun_id,
                 ParserErrorKind::ExpectedToken(Token::LeftBrace),
+                None,
                 &Self::ITEM_SYNC,
             ),
         };

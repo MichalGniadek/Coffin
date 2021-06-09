@@ -6,7 +6,7 @@ use crate::{
 };
 
 impl Parser<'_> {
-    pub(super) fn parse_item(&mut self) -> Item {
+    pub fn parse_item(&mut self) -> Item {
         let attrs = match self.curr_token {
             Token::HashBracket => self.parse_attributes(),
             _ => Attrs::None,
@@ -18,7 +18,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_attributes(&mut self) -> Attrs {
+    fn parse_attributes(&mut self) -> Attrs {
         let brackets_id = self.consume();
         let mut attrs = vec![];
 
@@ -53,7 +53,7 @@ impl Parser<'_> {
         Attrs::Ok(brackets_id, attrs)
     }
 
-    pub(super) fn parse_fun(&mut self, attrs: Attrs) -> Item {
+    fn parse_fun(&mut self, attrs: Attrs) -> Item {
         let fun_id = self.consume_expect(Token::Fun);
 
         let name = match self.curr_token {
@@ -135,7 +135,7 @@ impl Parser<'_> {
         };
 
         let body = match self.curr_token {
-            Token::LeftBrace => self.parse_block().expr(),
+            Token::LeftBrace => self.parse_expr(None).expr(),
             _ => self.err_consume(
                 fun_id,
                 ParserErrorKind::ExpectedToken(Token::LeftBrace),

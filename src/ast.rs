@@ -1,7 +1,6 @@
 use crate::{error::ParserError, lexer::Token};
 use lasso::Spur;
-use logos::Span;
-use std::{num::NonZeroU32, ops::{Index, IndexMut}, slice};
+use std::slice;
 
 pub struct Ast(pub Vec<Item>);
 
@@ -17,61 +16,6 @@ impl<'a> IntoIterator for &'a Ast {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub usize);
 
-#[derive(Debug, Clone)]
-pub struct SpansTable(Vec<Span>);
-
-impl SpansTable {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
-    pub fn push(&mut self, value: Span) -> Id {
-        self.0.push(value);
-        Id(self.0.len() as usize - 1)
-    }
-}
-
-impl Index<Id> for SpansTable {
-    type Output = Span;
-
-    fn index(&self, index: Id) -> &Self::Output {
-        &self.0[index.0 as usize]
-    }
-}
-
-impl IndexMut<Id> for SpansTable {
-    fn index_mut(&mut self, index: Id) -> &mut Self::Output {
-        &mut self.0[index.0 as usize]
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct SpirvId(pub NonZeroU32);
-
-#[derive(Debug, Clone)]
-pub struct Attr(pub Name, pub Vec<(Id, Token)>);
-
-#[derive(Debug, Clone)]
-pub enum Attrs {
-    Ok(Id, Vec<Attr>),
-    None,
-    Error(Id, ParserError),
-}
-
-#[derive(Debug)]
-pub enum Item {
-    Fun {
-        fun_id: Id,
-        attrs: Attrs,
-        name: Name,
-        paren_id: Id,
-        params: Vec<Field>,
-        ret: Option<(Id, Name)>,
-        body: Expr,
-    },
-    Error(Id, ParserError),
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Name(pub Id, pub Spur);
 
@@ -83,7 +27,27 @@ pub struct Field {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+pub struct Attr(pub Name, pub Vec<(Id, Token)>);
+
+#[derive(Debug, Clone)]
+pub enum Attrs {
+    Ok(Id, Vec<Attr>),
+    None,
+    Error(Id, ParserError),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Pow,
+    Eq,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Binary(Id, BinOpKind, Box<Expr>, Box<Expr>),
     Let {
@@ -101,17 +65,18 @@ pub enum Expr {
     Error(Id, ParserError),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum BinOpKind {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    Pow,
-    Eq,
-    Assign,
+#[derive(Debug)]
+pub enum Item {
+    Fun {
+        fun_id: Id,
+        attrs: Attrs,
+        name: Name,
+        paren_id: Id,
+        params: Vec<Field>,
+        ret: Option<(Id, Name)>,
+        body: Expr,
+    },
+    Error(Id, ParserError),
 }
 
 pub trait Visitor {

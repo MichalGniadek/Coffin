@@ -3,7 +3,7 @@ source: tests/parser_tests.rs
 expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars))"
 
 ---
-fun fn0@X (arg0@0 : T@X, arg1@1 : T@X, )  {
+fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
 	(let var0@2 = #0)
 	(var0@2 = $arg0@0)
 	{
@@ -18,7 +18,7 @@ fun fn0@X (arg0@0 : T@X, arg1@1 : T@X, )  {
 	(var1@5 = #8)
 	(arg0@0 = #9)
 }
-fun fn1@X (arg2@6 : T@X, )  {
+fun fn1@X (arg2@6 : T@X)  {
 	(let var1@7 = #0)
 	(var1@7 = ($var1@7 + #1))
 	(let var1@8 = ($var1@7 + #1))

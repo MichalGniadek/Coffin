@@ -1,7 +1,8 @@
 ---
 source: tests/parser_tests.rs
-expression: "ast.items.iter().map(|i|\n                         print.visit_item(i)).reduce(|a, b|\n                                                         format!(\"{}\\n{}\", a,\n                                                                 b)).unwrap()"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None)"
 
 ---
-fun asd (parm1 : Tt1, param2 : Tt2, ) -> i32 {
+fun asd (parm1 : Tt1, param2 : Tt2) -> i32 {
+	
 }

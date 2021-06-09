@@ -5,7 +5,7 @@ use crate::{
 use lasso::Spur;
 use std::{collections::HashMap, fmt::Display};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VariableId(usize);
 
 impl Display for VariableId {

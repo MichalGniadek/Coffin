@@ -1,4 +1,10 @@
-use coffin2::{ast::{Ast, SpansTable}, lexer::Token, name_resolution::NameResolution, parser, pretty_print::DebugPrint};
+use coffin2::{
+    ast::Ast,
+    lexer::Token,
+    name_resolution::NameResolution,
+    parser::{self, spans_table::SpansTable},
+    debug_print::DebugPrint,
+};
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
 use logos::Logos;

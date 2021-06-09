@@ -1,9 +1,11 @@
 mod error_node;
 mod expr_parsing;
 mod item_parsing;
+pub mod spans_table;
 
+use self::{error_node::ErrorNode, spans_table::SpansTable};
 use crate::{
-    ast::{Ast, Expr, Field, Id, Name, SpansTable},
+    ast::{Ast, Field, Id, Name},
     error::{ParserError, ParserErrorKind},
     lexer::Token,
 };
@@ -24,7 +26,11 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
         items.push(parser.parse_item());
     }
 
-    (Ast(items), parser.spans, parser.lexer.extras.into_resolver())
+    (
+        Ast(items),
+        parser.spans,
+        parser.lexer.extras.into_resolver(),
+    )
 }
 
 struct Parser<'a> {
@@ -35,56 +41,9 @@ struct Parser<'a> {
     curr_span: Span,
 }
 
-enum ParsedExpr {
-    Good(Expr),
-    Panic(Expr),
-}
-use ParsedExpr::{Good, Panic};
-
-use self::error_node::ErrorNode;
-
-impl ParsedExpr {
-    fn expr(self) -> Expr {
-        match self {
-            Good(e) => e,
-            Panic(e) => e,
-        }
-    }
-    fn destruct(self) -> (Expr, bool) {
-        match self {
-            Good(e) => (e, false),
-            Panic(e) => (e, true),
-        }
-    }
-}
-
-const fn concat<const A: usize, const B: usize, const C: usize>(
-    a: [Token; A],
-    b: [Token; B],
-) -> [Token; C] {
-    // Check lengths
-    let _ = [0; 1][A + B - C];
-
-    let mut out = [Token::EOF; C];
-
-    let mut i = 0;
-
-    while i < A {
-        out[i] = a[i];
-        i += 1;
-    }
-
-    while i < A + B {
-        out[i] = b[i - A];
-        i += 1;
-    }
-
-    out
-}
-
 impl Parser<'_> {
     const ITEM_SYNC: [Token; 3] = [Token::Fun, Token::HashBracket, Token::EOF];
-    const EXPR_SYNC: [Token; 4] = concat(Self::ITEM_SYNC, [Token::RightBrace]);
+    const EXPR_SYNC: [Token; 4] = const_concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
     /// Shouldn't be called directly.
     fn advance(&mut self) {
@@ -214,4 +173,28 @@ impl Parser<'_> {
             ttpe,
         })
     }
+}
+
+const fn const_concat<const A: usize, const B: usize, const C: usize>(
+    a: [Token; A],
+    b: [Token; B],
+) -> [Token; C] {
+    // Check lengths
+    let _ = [0; 1][A + B - C];
+
+    let mut out = [Token::EOF; C];
+
+    let mut i = 0;
+
+    while i < A {
+        out[i] = a[i];
+        i += 1;
+    }
+
+    while i < A + B {
+        out[i] = b[i - A];
+        i += 1;
+    }
+
+    out
 }

@@ -2,8 +2,7 @@ use crate::{
     ast::{self, Attrs, Id},
     error::ParserError,
 };
-
-use super::ParsedExpr;
+use super::expr_parsing::ExprResult;
 
 pub struct ErrorNode(pub Id, pub ParserError);
 
@@ -19,9 +18,9 @@ impl From<ErrorNode> for ast::Expr {
     }
 }
 
-impl From<ErrorNode> for ParsedExpr {
+impl From<ErrorNode> for ExprResult {
     fn from(err: ErrorNode) -> Self {
-        Self::Panic(err.into())
+        Self::PanicMode(err.into())
     }
 }
 

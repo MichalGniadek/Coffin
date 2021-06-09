@@ -1,6 +1,7 @@
 use crate::{
-    ast::{Attrs, BinOpKind, Expr, Field, Id, Item, Name, SpansTable, Visitor},
+    ast::{Attrs, BinOpKind, Expr, Field, Id, Item, Name, Visitor},
     error::ParserError,
+    parser::spans_table::SpansTable,
 };
 use logos::Span;
 

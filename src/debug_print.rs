@@ -1,7 +1,8 @@
 use crate::{
-    ast::{self, Ast, Attrs, Field, SpansTable, Visitor},
+    ast::{self, Ast, Attr, Attrs, Field, Visitor},
     error::ParserError,
     name_resolution::VariablesTable,
+    parser::spans_table::SpansTable,
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};
@@ -24,20 +25,20 @@ impl<'a, 'b, 'c> DebugPrint<'a, 'b, 'c> {
             rodeo,
             variables,
             spans,
-            indent: String::new(),
+            indent: String::from('\n'),
         };
 
         ast.into_iter()
             .map(|i| slf.visit_item(i))
-            .reduce(|a, b| format!("{}\n{}", a, b))
-            .unwrap_or(String::new())
+            .intersperse(String::from('\n'))
+            .collect()
     }
 }
 
 impl DebugPrint<'_, '_, '_> {
     fn span(&self, id: Id) -> String {
         self.spans
-            .map_or("".to_owned(), |s| format!("[{:?}] ", s[id]))
+            .map_or(String::new(), |s| format!("[{:?}] ", s[id]))
     }
 
     fn ident(&self, spur: Spur) -> String {
@@ -56,14 +57,11 @@ impl DebugPrint<'_, '_, '_> {
 
     fn name(&self, name: Name) -> String {
         let var_string = match self.variables {
-            Some(map) => {
-                if let Some(var_id) = map.get(&name.0) {
-                    format!("@{}", var_id)
-                } else {
-                    "@X".to_owned()
-                }
-            }
-            None => "".to_owned(),
+            Some(map) => match map.get(&name.0) {
+                Some(var_id) => format!("@{}", var_id),
+                None => String::from("@X"),
+            },
+            None => String::new(),
         };
         format!("{}{}{}", self.span(name.0), self.ident(name.1), var_string)
     }
@@ -96,21 +94,19 @@ impl Visitor for DebugPrint<'_, '_, '_> {
                 format!(
                     "{}#[{}]",
                     self.span(*id),
-                    // Attribute
-                    attrs.iter().fold("".to_owned(), |a, b| {
-                        format!(
-                            "{}{}({}), ",
-                            a,
-                            self.name(b.0),
-                            // Attribute arguments
-                            b.1.iter().fold("".to_owned(), |a, b| format!(
-                                "{}{}{} ",
-                                a,
-                                self.span(b.0),
-                                b.1
-                            ))
-                        )
-                    })
+                    attrs
+                        .iter()
+                        .map(|Attr(name, tokens)| format!(
+                            "{}({})",
+                            self.name(*name),
+                            tokens
+                                .iter()
+                                .map(|(id, t)| format!("{}{}", self.span(*id), t))
+                                .intersperse(String::from(' '))
+                                .collect::<String>()
+                        ))
+                        .intersperse(String::from(", "))
+                        .collect::<String>()
                 )
             }
             Attrs::None => String::new(),
@@ -119,11 +115,13 @@ impl Visitor for DebugPrint<'_, '_, '_> {
 
         let params_text = params
             .iter()
-            .fold("".to_owned(), |a, b| format!("{}{}, ", a, self.field(b)));
+            .map(|f| self.field(f))
+            .intersperse(String::from(", "))
+            .collect::<String>();
 
         let ret_text = match ret {
             Some((id, name)) => format!("{}-> {}", self.span(*id), self.name(*name)),
-            None => "".to_owned(),
+            None => String::new(),
         };
 
         format!(
@@ -151,15 +149,14 @@ impl Visitor for DebugPrint<'_, '_, '_> {
             BinOpKind::Rem => "%",
             BinOpKind::Pow => "**",
             BinOpKind::Eq => "==",
-            BinOpKind::Assign => {
-                panic!("Internal compiler error: Assign binary kind shouldn't be an binary node.")
-            }
         };
-
-        let left = self.visit_expr(left);
-        let right = self.visit_expr(right);
-
-        format!("({} {}{} {})", left, self.span(id), symbol, right)
+        format!(
+            "({} {}{} {})",
+            self.visit_expr(left),
+            self.span(id),
+            symbol,
+            self.visit_expr(right)
+        )
     }
 
     fn r#let(
@@ -170,24 +167,28 @@ impl Visitor for DebugPrint<'_, '_, '_> {
         eq_id: Id,
         expr: &Expr,
     ) -> Self::Out {
-        let expr = self.visit_expr(expr);
         let r#mut = match mut_id {
             Some(id) => format!(" {}mut", self.span(id)),
-            None => "".to_owned(),
+            None => String::new(),
         };
+
         format!(
             "({}let{} {} {}= {})",
             self.span(let_id),
             r#mut,
             self.name(name),
             self.span(eq_id),
-            expr
+            self.visit_expr(expr)
         )
     }
 
     fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
-        let right = self.visit_expr(right);
-        format!("({} {}= {})", self.name(name), self.span(id), right)
+        format!(
+            "({} {}= {})",
+            self.name(name),
+            self.span(id),
+            self.visit_expr(right)
+        )
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
@@ -205,12 +206,22 @@ impl Visitor for DebugPrint<'_, '_, '_> {
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
         self.indent.push('\t');
         let indent = self.indent.clone();
-        let body = exprs.iter().fold("".to_owned(), |a, e| {
-            format!("{}\n{}{}", a, indent, self.visit_expr(e))
-        });
+
+        let body = exprs
+            .iter()
+            .map(|e| self.visit_expr(e))
+            .intersperse(indent)
+            .collect::<String>();
+
         self.indent.pop();
 
-        format!("{}{{{}\n{}}}", self.span(id), body, self.indent)
+        format!(
+            "{}{{{}\t{}{}}}",
+            self.span(id),
+            self.indent,
+            body,
+            self.indent
+        )
     }
 
     fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {

@@ -1,10 +1,11 @@
+#![feature(iter_intersperse)]
 pub mod ast;
 pub mod ast_span;
 pub mod error;
 pub mod lexer;
 pub mod name_resolution;
 pub mod parser;
-pub mod pretty_print;
+pub mod debug_print;
 pub mod type_resolver;
 
 use assembler::{Assembler, DisassembleOptions};

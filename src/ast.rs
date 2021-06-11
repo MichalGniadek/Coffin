@@ -2,14 +2,17 @@ use crate::{error::ParserError, lexer::Token};
 use lasso::Spur;
 use std::slice;
 
-pub struct Ast(pub Vec<Item>);
+pub struct Ast {
+    pub items: Vec<Item>,
+    pub max_id: usize,
+}
 
 impl<'a> IntoIterator for &'a Ast {
     type Item = &'a Item;
     type IntoIter = slice::Iter<'a, Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.items.iter()
     }
 }
 

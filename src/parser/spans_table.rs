@@ -1,6 +1,6 @@
-use std::ops::{Index, IndexMut};
-use logos::Span;
 use crate::ast::Id;
+use logos::Span;
+use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone)]
 pub struct SpansTable(Vec<Span>);
@@ -13,6 +13,10 @@ impl SpansTable {
     pub fn push(&mut self, value: Span) -> Id {
         self.0.push(value);
         Id(self.0.len() as usize - 1)
+    }
+
+    pub fn max_id(&self) -> usize {
+        self.0.len()
     }
 }
 

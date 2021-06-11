@@ -57,7 +57,7 @@ impl DebugPrint<'_, '_, '_> {
 
     fn name(&self, name: Name) -> String {
         let var_string = match self.variables {
-            Some(map) => match map.get(&name.0) {
+            Some(map) => match map.get(name.0) {
                 Some(var_id) => format!("@{}", var_id),
                 None => String::from("@X"),
             },

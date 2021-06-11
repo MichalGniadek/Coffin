@@ -1,6 +1,7 @@
 use crate::{
-    ast::{Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
+    ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     error::ParserError,
+    name_resolution::VariablesTable,
 };
 use std::ops::{Index, IndexMut};
 
@@ -8,6 +9,12 @@ use std::ops::{Index, IndexMut};
 pub struct FunType(Vec<Type>);
 
 impl FunType {
+    pub fn new(return_type: Type, parameters: &[Type]) -> Self {
+        let mut v = vec![return_type];
+        v.extend_from_slice(parameters);
+        Self(v)
+    }
+
     pub fn get_return_type(&self) -> &Type {
         &self.0[0]
     }
@@ -20,33 +27,16 @@ impl FunType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Void,
-    Poisoned,
+    Error,
     Int,
     Float,
     Fun(FunType),
 }
 
 #[derive(Debug, Clone)]
-pub struct Types(Vec<Type>);
+pub struct TypesTable(Vec<Type>);
 
-impl Types {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
-    pub fn new_with_size(n: usize, default: Type) {
-        let mut v = vec![];
-        v.resize(n, default);
-        Self(v);
-    }
-
-    pub fn push(&mut self, value: Type) -> Id {
-        self.0.push(value);
-        Id(self.0.len() as usize - 1)
-    }
-}
-
-impl Index<Id> for Types {
+impl Index<Id> for TypesTable {
     type Output = Type;
 
     fn index(&self, index: Id) -> &Self::Output {
@@ -54,35 +44,56 @@ impl Index<Id> for Types {
     }
 }
 
-impl IndexMut<Id> for Types {
+impl IndexMut<Id> for TypesTable {
     fn index_mut(&mut self, index: Id) -> &mut Self::Output {
         &mut self.0[index.0 as usize]
     }
 }
 
-pub struct TypeResolver {
-    types: Types,
-    /*variables, scopes, accumulated errors*/
+pub struct TypeResolver<'a> {
+    variables: &'a VariablesTable,
+    variable_type: Vec<Type>,
+    types: TypesTable,
 }
 
-impl Visitor for TypeResolver {
+impl<'a> TypeResolver<'a> {
+    pub fn new(ast: &Ast, variables: &'a VariablesTable) -> TypesTable {
+        let mut slf = Self {
+            variables,
+            variable_type: vec![Type::Error; variables.max_var_id()],
+            types: TypesTable(vec![Type::Error; ast.max_id]),
+        };
+
+        for item in ast {
+            slf.visit_item(item);
+        }
+
+        slf.types
+    }
+}
+
+impl Visitor for TypeResolver<'_> {
     type Out = Id;
 
     fn fun(
         &mut self,
         __fun_id: Id,
         __attrs: &Attrs,
-        __name: Name,
+        name: Name,
         __paren_id: Id,
-        __params: &Vec<Field>,
+        params: &Vec<Field>,
         __ret: &Option<(Id, Name)>,
-        __body: &Expr,
+        body: &Expr,
     ) -> Self::Out {
-        todo!()
+        if !params.is_empty() {
+            todo!("Function parameters not implemented")
+        };
+        self.visit_expr(body);
+        name.0
     }
 
     fn item_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
-        self.types[id] = Type::Poisoned;
+        self.types[id] = Type::Error;
         id
     }
 
@@ -93,32 +104,57 @@ impl Visitor for TypeResolver {
         let left = &self.types[left];
         let right = &self.types[right];
 
-        let ttpe = match (left, kind, right) {
+        self.types[id] = match (left, kind, right) {
             (Type::Int, _, Type::Int) => Type::Int,
             (Type::Float, _, Type::Float) => Type::Float,
-            (_, _, _) => Type::Poisoned,
+            (Type::Error, _, _) => Type::Error,
+            (_, _, Type::Error) => Type::Error,
+            _ => Type::Error,
         };
-        self.types[id] = ttpe;
+
         id
     }
 
     fn r#let(
         &mut self,
-        __let_id: Id,
-        __mut_id: Option<Id>,
-        __name: Name,
-        __eq_id: Id,
-        __expr: &Expr,
+        let_id: Id,
+        _mut_id: Option<Id>,
+        name: Name,
+        _eq_id: Id,
+        expr: &Expr,
     ) -> Self::Out {
-        todo!()
+        let var_id = self.variables.get(name.0).unwrap();
+        let expr_id = self.visit_expr(expr);
+        self.variable_type[var_id.0] = self.types[expr_id].clone();
+
+        self.types[let_id] = Type::Void;
+        let_id
     }
 
-    fn assign(&mut self, __id: Id, __name: Name, __right: &Expr) -> Self::Out {
-        todo!()
+    fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
+        let expr_id = self.visit_expr(right);
+        let expr_type = &self.types[expr_id];
+        let var_type = match self.variables.get(name.0) {
+            Some(i) => &self.variable_type[i.0],
+            None => &Type::Error,
+        };
+
+        if expr_type != var_type && expr_type != &Type::Error && var_type != &Type::Error {
+            todo!("type check error");
+        }
+
+        self.types[id] = Type::Void;
+        id
     }
 
-    fn identifier(&mut self, __name: Name) -> Self::Out {
-        todo!()
+    fn identifier(&mut self, name: Name) -> Self::Out {
+        let ttpe = match self.variables.get(name.0) {
+            Some(var_id) => self.variable_type[var_id.0].clone(),
+            None => Type::Error,
+        };
+        self.types[name.0] = ttpe;
+
+        name.0
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {
@@ -132,17 +168,16 @@ impl Visitor for TypeResolver {
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
-        let mut ttpe = &Type::Void;
-        for e in exprs {
-            let expr_id = self.visit_expr(e);
-            ttpe = &self.types[expr_id];
-        }
-        self.types[id] = ttpe.clone();
+        self.types[id] = match exprs.iter().map(|e| self.visit_expr(e)).last() {
+            Some(id) => self.types[id].clone(),
+            None => Type::Void,
+        };
+
         id
     }
 
     fn expr_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
-        self.types[id] = Type::Poisoned;
+        self.types[id] = Type::Error;
         id
     }
 }

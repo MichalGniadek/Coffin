@@ -1,9 +1,9 @@
 use coffin2::{
     ast::Ast,
+    debug_print::DebugPrint,
     lexer::Token,
     name_resolution::NameResolution,
     parser::{self, spans_table::SpansTable},
-    debug_print::DebugPrint,
 };
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
@@ -26,7 +26,7 @@ fn insta() {
         let (ast, spans, rodeo) = get_ast(path);
         assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None));
     });
-    glob!(r"insta_parser_variables\*.coff", |path| {
+    glob!(r"insta_variables\*.coff", |path| {
         let (ast, _, rodeo) = get_ast(path);
         let vars = NameResolution::visit(&ast);
         assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars)));

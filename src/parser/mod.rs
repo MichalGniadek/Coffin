@@ -27,7 +27,10 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
     }
 
     (
-        Ast(items),
+        Ast {
+            items,
+            max_id: parser.spans.max_id(),
+        },
         parser.spans,
         parser.lexer.extras.into_resolver(),
     )

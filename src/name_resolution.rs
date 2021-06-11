@@ -6,7 +6,7 @@ use lasso::Spur;
 use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VariableId(usize);
+pub struct VariableId(pub usize);
 
 impl Display for VariableId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -14,20 +14,42 @@ impl Display for VariableId {
     }
 }
 
-pub type VariablesTable = HashMap<Id, VariableId>;
+pub struct VariablesTable(HashMap<Id, VariableId>, usize);
+
+impl VariablesTable {
+    pub fn max_var_id(&self) -> usize {
+        self.1
+    }
+
+    pub fn get(&self, id: Id) -> Option<VariableId> {
+        self.0.get(&id).cloned()
+    }
+
+    fn new() -> Self {
+        Self(HashMap::new(), 0)
+    }
+
+    fn insert(&mut self, id: Id, var_id: VariableId) {
+        self.0.insert(id, var_id);
+    }
+
+    fn new_variable(&mut self, id: Id) -> VariableId {
+        self.1 += 1;
+        self.insert(id, VariableId(self.1 - 1));
+        VariableId(self.1 - 1)
+    }
+}
 
 pub struct NameResolution {
     variables: VariablesTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
-    curr_var_id: usize,
 }
 
 impl NameResolution {
     pub fn visit(ast: &Ast) -> VariablesTable {
         let mut slf = Self {
-            variables: HashMap::new(),
+            variables: VariablesTable::new(),
             scopes: vec![],
-            curr_var_id: 0,
         };
 
         for item in ast {
@@ -37,11 +59,8 @@ impl NameResolution {
         slf.variables
     }
 
-    pub fn new_variable(&mut self, name: Name) {
-        let var_id = VariableId(self.curr_var_id);
-        self.curr_var_id += 1;
-
-        self.variables.insert(name.0, var_id);
+    fn new_variable(&mut self, name: Name) {
+        let var_id = self.variables.new_variable(name.0);
         self.scopes.last_mut().unwrap().insert(name.1, var_id);
     }
 }

@@ -56,11 +56,11 @@ impl Visitor for SpanGetter<'_> {
     }
 
     fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
-        self.0[name.0].start..self.visit_expr(right).end
+        self.0[name.id].start..self.visit_expr(right).end
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        self.0[name.0].clone()
+        self.0[name.id].clone()
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {

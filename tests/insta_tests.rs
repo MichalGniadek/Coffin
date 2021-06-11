@@ -4,6 +4,7 @@ use coffin2::{
     lexer::Token,
     name_resolution::NameResolution,
     parser::{self, spans_table::SpansTable},
+    type_resolution::TypeResolution,
 };
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
@@ -20,15 +21,39 @@ fn get_ast(path: &Path) -> (Ast, SpansTable, RodeoResolver) {
 fn insta() {
     glob!(r"insta_parser\*.coff", |path| {
         let (ast, _, rodeo) = get_ast(path);
-        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, None));
+        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, None, None));
     });
     glob!(r"insta_parser_spans\*.coff", |path| {
         let (ast, spans, rodeo) = get_ast(path);
-        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None));
+        assert_snapshot!(DebugPrint::visit(
+            &ast,
+            Some(&rodeo),
+            Some(&spans),
+            None,
+            None
+        ));
     });
     glob!(r"insta_variables\*.coff", |path| {
         let (ast, _, rodeo) = get_ast(path);
         let vars = NameResolution::visit(&ast);
-        assert_snapshot!(DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars)));
+        assert_snapshot!(DebugPrint::visit(
+            &ast,
+            Some(&rodeo),
+            None,
+            Some(&vars),
+            None
+        ));
+    });
+    glob!(r"insta_types\*.coff", |path| {
+        let (ast, _, rodeo) = get_ast(path);
+        let vars = NameResolution::visit(&ast);
+        let types = TypeResolution::visit(&ast, &vars);
+        assert_snapshot!(DebugPrint::visit(
+            &ast,
+            Some(&rodeo),
+            None,
+            None,
+            Some(&types)
+        ));
     });
 }

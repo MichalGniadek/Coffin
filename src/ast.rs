@@ -3,8 +3,18 @@ use lasso::Spur;
 use std::slice;
 
 pub struct Ast {
-    pub items: Vec<Item>,
-    pub max_id: usize,
+    items: Vec<Item>,
+    max_id: Id,
+}
+
+impl Ast {
+    pub fn new(items: Vec<Item>, max_id: Id) -> Self {
+        Self { items, max_id }
+    }
+
+    pub fn max_id(&self) -> Id {
+        self.max_id
+    }
 }
 
 impl<'a> IntoIterator for &'a Ast {
@@ -17,10 +27,25 @@ impl<'a> IntoIterator for &'a Ast {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Id(pub usize);
+pub struct Id(usize);
+
+impl Id {
+    pub fn new(n: usize) -> Self {
+        Id(n)
+    }
+}
+
+impl From<Id> for usize {
+    fn from(id: Id) -> Self {
+        id.0
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
-pub struct Name(pub Id, pub Spur);
+pub struct Name {
+    pub id: Id,
+    pub spur: Spur,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Field {

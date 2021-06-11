@@ -44,7 +44,10 @@ impl Parser<'_> {
     fn parse_prefix(&mut self) -> ExprResult {
         match self.curr_token {
             Token::Int(i) => Correct(Expr::Int(self.consume(), i)),
-            Token::Identifier(s) => Correct(Expr::Identifier(Name(self.consume(), s))),
+            Token::Identifier(spur) => Correct(Expr::Identifier(Name {
+                id: self.consume(),
+                spur,
+            })),
             Token::Let => self.parse_let(),
             Token::LeftBrace => self.parse_block(),
             _ => PanicMode(self.err_consume(
@@ -58,14 +61,17 @@ impl Parser<'_> {
 
     fn parse_let(&mut self) -> ExprResult {
         let let_id = self.consume_expect(Token::Let);
-        
+
         let mut_id = match self.curr_token {
             Token::Mut => Some(self.consume_expect(Token::Mut)),
             _ => None,
         };
 
         let name = match self.curr_token {
-            Token::Identifier(s) => Name(self.consume(), s),
+            Token::Identifier(spur) => Name {
+                id: self.consume(),
+                spur,
+            },
             _ => {
                 return self.err_consume(
                     let_id,

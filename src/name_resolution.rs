@@ -3,22 +3,22 @@ use crate::{
     error::ParserError,
 };
 use lasso::Spur;
-use std::{collections::HashMap, fmt::Display};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VariableId(pub usize);
+pub struct VariableId(usize);
 
-impl Display for VariableId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+impl From<VariableId> for usize {
+    fn from(id: VariableId) -> Self {
+        id.0
     }
 }
 
 pub struct VariablesTable(HashMap<Id, VariableId>, usize);
 
 impl VariablesTable {
-    pub fn max_var_id(&self) -> usize {
-        self.1
+    pub fn max_var_id(&self) -> VariableId {
+        VariableId(self.1)
     }
 
     pub fn get(&self, id: Id) -> Option<VariableId> {
@@ -60,8 +60,8 @@ impl NameResolution {
     }
 
     fn new_variable(&mut self, name: Name) {
-        let var_id = self.variables.new_variable(name.0);
-        self.scopes.last_mut().unwrap().insert(name.1, var_id);
+        let var_id = self.variables.new_variable(name.id);
+        self.scopes.last_mut().unwrap().insert(name.spur, var_id);
     }
 }
 
@@ -102,18 +102,18 @@ impl Visitor for NameResolution {
         self.visit_expr(right);
 
         for scope in self.scopes.iter().rev() {
-            if let Some(&var_id) = scope.get(&name.1) {
-                self.variables.insert(name.0, var_id);
-                return;
+            if let Some(&var_id) = scope.get(&name.spur) {
+                self.variables.insert(name.id, var_id);
+                break;
             }
         }
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
         for scope in self.scopes.iter().rev() {
-            if let Some(&var_id) = scope.get(&name.1) {
-                self.variables.insert(name.0, var_id);
-                return;
+            if let Some(&var_id) = scope.get(&name.spur) {
+                self.variables.insert(name.id, var_id);
+                break;
             }
         }
     }

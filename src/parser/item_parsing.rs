@@ -24,7 +24,10 @@ impl Parser<'_> {
 
         while self.curr_token != Token::RightBracket {
             let name = match self.curr_token {
-                Token::Identifier(s) => Name(self.consume(), s),
+                Token::Identifier(spur) => Name {
+                    id: self.consume(),
+                    spur,
+                },
                 _ => {
                     return self.err_consume(
                         brackets_id,
@@ -57,7 +60,10 @@ impl Parser<'_> {
         let fun_id = self.consume_expect(Token::Fun);
 
         let name = match self.curr_token {
-            Token::Identifier(s) => Name(self.consume(), s),
+            Token::Identifier(spur) => Name {
+                id: self.consume(),
+                spur,
+            },
             _ => {
                 return self.err_consume(
                     fun_id,
@@ -118,7 +124,10 @@ impl Parser<'_> {
             let arrow_id = self.consume();
 
             let ttpe = match self.curr_token {
-                Token::Identifier(s) => Name(self.consume(), s),
+                Token::Identifier(spur) => Name {
+                    id: self.consume(),
+                    spur,
+                },
                 _ => {
                     return self.err_consume(
                         fun_id,

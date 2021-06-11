@@ -6,7 +6,7 @@ pub mod lexer;
 pub mod name_resolution;
 pub mod parser;
 pub mod debug_print;
-pub mod type_resolver;
+pub mod type_resolution;
 
 use assembler::{Assembler, DisassembleOptions};
 use codespan_reporting::{

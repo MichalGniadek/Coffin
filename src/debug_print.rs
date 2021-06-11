@@ -3,28 +3,32 @@ use crate::{
     error::ParserError,
     name_resolution::VariablesTable,
     parser::spans_table::SpansTable,
+    type_resolution::{Type, TypesTable},
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};
 
-pub struct DebugPrint<'a, 'b, 'c> {
+pub struct DebugPrint<'a, 'b, 'c, 'd> {
     rodeo: Option<&'a RodeoResolver>,
     spans: Option<&'b SpansTable>,
     variables: Option<&'c VariablesTable>,
+    types: Option<&'d TypesTable>,
     indent: String,
 }
 
-impl<'a, 'b, 'c> DebugPrint<'a, 'b, 'c> {
+impl<'a, 'b, 'c, 'd> DebugPrint<'a, 'b, 'c, 'd> {
     pub fn visit(
         ast: &Ast,
         rodeo: Option<&'a RodeoResolver>,
         spans: Option<&'b SpansTable>,
         variables: Option<&'c VariablesTable>,
+        types: Option<&'d TypesTable>,
     ) -> String {
         let mut slf = Self {
             rodeo,
             variables,
             spans,
+            types,
             indent: String::from('\n'),
         };
 
@@ -35,7 +39,7 @@ impl<'a, 'b, 'c> DebugPrint<'a, 'b, 'c> {
     }
 }
 
-impl DebugPrint<'_, '_, '_> {
+impl DebugPrint<'_, '_, '_, '_> {
     fn span(&self, id: Id) -> String {
         self.spans
             .map_or(String::new(), |s| format!("[{:?}] ", s[id]))
@@ -57,13 +61,33 @@ impl DebugPrint<'_, '_, '_> {
 
     fn name(&self, name: Name) -> String {
         let var_string = match self.variables {
-            Some(map) => match map.get(name.0) {
-                Some(var_id) => format!("@{}", var_id),
+            Some(map) => match map.get(name.id) {
+                Some(var_id) => format!("@{}", usize::from(var_id)),
                 None => String::from("@X"),
             },
             None => String::new(),
         };
-        format!("{}{}{}", self.span(name.0), self.ident(name.1), var_string)
+        format!(
+            "{}{}{}",
+            self.span(name.id),
+            self.ident(name.spur),
+            var_string
+        )
+    }
+
+    fn ttpe(&self, id: Id) -> String {
+        let ttpe = match self.types {
+            Some(t) => &t[id],
+            None => return String::new(),
+        };
+
+        match ttpe {
+            Type::Void => format!(": void"),
+            Type::Error => format!(": error"),
+            Type::Int => format!(": int"),
+            Type::Float => format!(": float"),
+            Type::Fun(_) => format!(": fun"),
+        }
     }
 
     fn field(&self, field: &Field) -> String {
@@ -76,7 +100,7 @@ impl DebugPrint<'_, '_, '_> {
     }
 }
 
-impl Visitor for DebugPrint<'_, '_, '_> {
+impl Visitor for DebugPrint<'_, '_, '_, '_> {
     type Out = String;
 
     fn fun(
@@ -151,11 +175,12 @@ impl Visitor for DebugPrint<'_, '_, '_> {
             BinOpKind::Eq => "==",
         };
         format!(
-            "({} {}{} {})",
+            "({} {}{} {}){}",
             self.visit_expr(left),
             self.span(id),
             symbol,
-            self.visit_expr(right)
+            self.visit_expr(right),
+            self.ttpe(id),
         )
     }
 
@@ -173,34 +198,36 @@ impl Visitor for DebugPrint<'_, '_, '_> {
         };
 
         format!(
-            "({}let{} {} {}= {})",
+            "({}let{} {} {}= {}){}",
             self.span(let_id),
             r#mut,
             self.name(name),
             self.span(eq_id),
-            self.visit_expr(expr)
+            self.visit_expr(expr),
+            self.ttpe(let_id),
         )
     }
 
     fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
         format!(
-            "({} {}= {})",
+            "({} {}= {}){}",
             self.name(name),
             self.span(id),
-            self.visit_expr(right)
+            self.visit_expr(right),
+            self.ttpe(id),
         )
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        format!("${}", self.name(name))
+        format!("${}{}", self.name(name), self.ttpe(name.id))
     }
 
     fn float(&mut self, id: Id, f: f32) -> Self::Out {
-        format!("{}#{}", self.span(id), f)
+        format!("{}#{}{}", self.span(id), f, self.ttpe(id))
     }
 
     fn int(&mut self, id: Id, i: i32) -> Self::Out {
-        format!("{}#{}", self.span(id), i)
+        format!("{}#{}{}", self.span(id), i, self.ttpe(id))
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
@@ -216,11 +243,12 @@ impl Visitor for DebugPrint<'_, '_, '_> {
         self.indent.pop();
 
         format!(
-            "{}{{{}\t{}{}}}",
+            "{}{{{}\t{}{}}}{}",
             self.span(id),
             self.indent,
             body,
-            self.indent
+            self.indent,
+            self.ttpe(id),
         )
     }
 

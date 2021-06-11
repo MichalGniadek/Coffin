@@ -27,10 +27,7 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
     }
 
     (
-        Ast {
-            items,
-            max_id: parser.spans.max_id(),
-        },
+        Ast::new(items, parser.spans.max_id()),
         parser.spans,
         parser.lexer.extras.into_resolver(),
     )
@@ -135,7 +132,10 @@ impl Parser<'_> {
 
     fn parse_field<T: From<ErrorNode>>(&mut self, ast_node_id: Id) -> Result<Field, T> {
         let name = match self.curr_token {
-            Token::Identifier(s) => Name(self.consume(), s),
+            Token::Identifier(spur) => Name {
+                id: self.consume(),
+                spur,
+            },
             _ => {
                 return Err(self.err_consume(
                     ast_node_id,
@@ -159,7 +159,10 @@ impl Parser<'_> {
         };
 
         let ttpe = match self.curr_token {
-            Token::Identifier(s) => Name(self.consume(), s),
+            Token::Identifier(spur) => Name {
+                id: self.consume(),
+                spur,
+            },
             _ => {
                 return Err(self.err_consume(
                     ast_node_id,

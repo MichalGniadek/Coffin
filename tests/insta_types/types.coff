@@ -1,0 +1,7 @@
+fun a(){
+    let a = 3
+    let b = a + 5
+    {
+        a+b
+    }
+}

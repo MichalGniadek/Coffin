@@ -1,6 +1,8 @@
+use std::iter;
+
 use crate::{
     ast::{self, Ast, Attr, Attrs, Field, Visitor},
-    error::ParserError,
+    error::CoffinError,
     name_resolution::VariablesTable,
     parser::spans_table::SpansTable,
     type_resolution::{Type, TypesTable},
@@ -23,6 +25,7 @@ impl<'a, 'b, 'c, 'd> DebugPrint<'a, 'b, 'c, 'd> {
         spans: Option<&'b SpansTable>,
         variables: Option<&'c VariablesTable>,
         types: Option<&'d TypesTable>,
+        errors: Option<Vec<CoffinError>>,
     ) -> String {
         let mut slf = Self {
             rodeo,
@@ -34,6 +37,8 @@ impl<'a, 'b, 'c, 'd> DebugPrint<'a, 'b, 'c, 'd> {
 
         ast.into_iter()
             .map(|i| slf.visit_item(i))
+            .chain(iter::once(String::from("\n===")))
+            .chain(errors.iter().flatten().map(|err| format!("{}", err)))
             .intersperse(String::from('\n'))
             .collect()
     }
@@ -49,13 +54,6 @@ impl DebugPrint<'_, '_, '_, '_> {
         match self.rodeo {
             Some(r) => r.resolve(&spur).to_owned(),
             None => format!("{:?}", spur),
-        }
-    }
-
-    fn err(&self, err: &ParserError) -> String {
-        match self.spans {
-            Some(_) => format!("[{:?}] {}", err.1, err.to_string()),
-            None => err.to_string(),
         }
     }
 
@@ -134,7 +132,7 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
                 )
             }
             Attrs::None => String::new(),
-            Attrs::Error(id, err) => format!("#[{}Err: {}]", self.span(*id), self.err(err)),
+            Attrs::Error(id) => format!("#[{}Err]", self.span(*id)),
         };
 
         let params_text = params
@@ -160,8 +158,8 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
         )
     }
 
-    fn item_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
-        format!("{}Err: {}", self.span(id), self.err(err))
+    fn item_error(&mut self, id: Id) -> Self::Out {
+        format!("{}Err", self.span(id))
     }
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
@@ -252,7 +250,7 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
         )
     }
 
-    fn expr_error(&mut self, id: Id, err: &ParserError) -> Self::Out {
-        format!("{}Err: {}", self.span(id), self.err(err))
+    fn expr_error(&mut self, id: Id) -> Self::Out {
+        format!("{}Err", self.span(id))
     }
 }

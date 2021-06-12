@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 fun a ()  {
@@ -9,3 +9,5 @@ fun a ()  {
 	((#1 * #2) * #3)
 	(#1 ** (#2 ** #3))
 }
+
+===

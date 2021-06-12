@@ -1,9 +1,11 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 fun asd ()  {
 	(#2 + #3)
 	#2
 }
+
+===

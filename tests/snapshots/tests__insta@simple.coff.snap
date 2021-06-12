@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Some(errors))"
 
 ---
 [0..3] fun [4..7] asd [7..31] ([8..13] parm1 [13..14] : [15..18] Tt1, [20..26] param2 [26..27] : [28..31] Tt2) [33..35] -> [36..39] i32 [40..97] {
@@ -8,6 +8,9 @@ expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None)"
 		([58..59] #2 [59..60] + [60..61] #2)
 	}
 	[74..94] {
-		[85..88] Err: [85..86] Expected prefix token.
+		[85..88] Err
 	}
 }
+
+===
+Expected prefix token. [85..86]

@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 fun asd ()  {
@@ -9,10 +9,13 @@ fun asd ()  {
 			#1
 		}
 		{
-			Err: Expected prefix token.
+			Err
 		}
 		{
 			#3
 		}
 	}
 }
+
+===
+Expected prefix token. [79..80]

@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types))"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types), None)"
 
 ---
 fun a ()  {
@@ -13,3 +13,5 @@ fun a ()  {
 		(a = $b: int): void
 	}: void): void
 }: void
+
+===

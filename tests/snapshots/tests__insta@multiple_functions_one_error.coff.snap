@@ -1,12 +1,15 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 fun d ()  {
 	#2
 }
-Err: Expected token Identifier.
+Err
 fun asd ()  {
 	#3
 }
+
+===
+Expected token Identifier. [26..27]

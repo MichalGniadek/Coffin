@@ -1,6 +1,5 @@
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
-    error::ParserError,
     name_resolution::{VariableId, VariablesTable},
 };
 use std::ops::{Index, IndexMut};
@@ -121,7 +120,7 @@ impl Visitor for TypeResolution<'_> {
         name.id
     }
 
-    fn item_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
+    fn item_error(&mut self, id: Id) -> Self::Out {
         self.types[id] = Type::Error;
         id
     }
@@ -205,7 +204,7 @@ impl Visitor for TypeResolution<'_> {
         id
     }
 
-    fn expr_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
+    fn expr_error(&mut self, id: Id) -> Self::Out {
         self.types[id] = Type::Error;
         id
     }

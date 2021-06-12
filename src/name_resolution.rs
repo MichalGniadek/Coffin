@@ -1,6 +1,7 @@
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
-    error::ParserError,
+    error::CoffinError,
+    parser::spans_table::SpansTable,
 };
 use lasso::Spur;
 use std::collections::HashMap;
@@ -40,23 +41,29 @@ impl VariablesTable {
     }
 }
 
-pub struct NameResolution {
+pub struct NameResolution<'a> {
     variables: VariablesTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
+
+    spans: &'a SpansTable,
+    errors: Vec<CoffinError>,
 }
 
-impl NameResolution {
-    pub fn visit(ast: &Ast) -> VariablesTable {
+impl<'a> NameResolution<'a> {
+    pub fn visit(ast: &Ast, spans: &'a SpansTable) -> (VariablesTable, Vec<CoffinError>) {
         let mut slf = Self {
             variables: VariablesTable::new(),
             scopes: vec![],
+
+            spans,
+            errors: vec![],
         };
 
         for item in ast {
             slf.visit_item(item);
         }
 
-        slf.variables
+        (slf.variables, slf.errors)
     }
 
     fn new_variable(&mut self, name: Name) {
@@ -65,7 +72,7 @@ impl NameResolution {
     }
 }
 
-impl Visitor for NameResolution {
+impl Visitor for NameResolution<'_> {
     type Out = ();
 
     fn fun(
@@ -99,22 +106,28 @@ impl Visitor for NameResolution {
     }
 
     fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
-        self.visit_expr(right);
+        let mut scopes = self.scopes.iter().rev();
+        let found = scopes.find_map(|scope| scope.get(&name.spur));
 
-        for scope in self.scopes.iter().rev() {
-            if let Some(&var_id) = scope.get(&name.spur) {
-                self.variables.insert(name.id, var_id);
-                break;
-            }
+        match found {
+            Some(&var_id) => self.variables.insert(name.id, var_id),
+            None => self.errors.push(CoffinError::NameResolutionError(
+                self.spans[name.id].clone(),
+            )),
         }
+
+        self.visit_expr(right);
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        for scope in self.scopes.iter().rev() {
-            if let Some(&var_id) = scope.get(&name.spur) {
-                self.variables.insert(name.id, var_id);
-                break;
-            }
+        let mut scopes = self.scopes.iter().rev();
+        let found = scopes.find_map(|scope| scope.get(&name.spur));
+
+        match found {
+            Some(&var_id) => self.variables.insert(name.id, var_id),
+            None => self.errors.push(CoffinError::NameResolutionError(
+                self.spans[name.id].clone(),
+            )),
         }
     }
 
@@ -131,8 +144,8 @@ impl Visitor for NameResolution {
         self.visit_expr(right);
     }
 
-    fn item_error(&mut self, _id: Id, _kind: &ParserError) -> Self::Out {}
+    fn item_error(&mut self, _id: Id) -> Self::Out {}
     fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
     fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
-    fn expr_error(&mut self, _id: Id, _kind: &ParserError) -> Self::Out {}
+    fn expr_error(&mut self, _id: Id) -> Self::Out {}
 }

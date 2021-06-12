@@ -1,18 +1,23 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 fun a ()  {
 	(let asd = #123)
 	(let mut fgh = (#345 + $asd))
 	{
-		Err: Expected token Identifier.
+		Err
 	}
 	{
-		Err: Expected token '='.
+		Err
 	}
 	{
-		(let mut asd = Err: Expected prefix token.)
+		(let mut asd = Err)
 	}
 }
+
+===
+Expected token Identifier. [71..72]
+Expected token '='. [96..99]
+Expected prefix token. [120..121]

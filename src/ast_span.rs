@@ -1,6 +1,5 @@
 use crate::{
     ast::{Attrs, BinOpKind, Expr, Field, Id, Item, Name, Visitor},
-    error::ParserError,
     parser::spans_table::SpansTable,
 };
 use logos::Span;
@@ -31,12 +30,12 @@ impl Visitor for SpanGetter<'_> {
         let start = match attrs {
             Attrs::Ok(id, _) => &self.0[*id],
             Attrs::None => &self.0[fun_id],
-            Attrs::Error(id, _) => &self.0[*id],
+            Attrs::Error(id) => &self.0[*id],
         };
         start.start..self.visit_expr(body).end
     }
 
-    fn item_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
+    fn item_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }
 
@@ -75,7 +74,7 @@ impl Visitor for SpanGetter<'_> {
         self.0[id].clone()
     }
 
-    fn expr_error(&mut self, id: Id, _kind: &ParserError) -> Self::Out {
+    fn expr_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }
 }

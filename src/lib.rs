@@ -1,11 +1,11 @@
 #![feature(iter_intersperse)]
 pub mod ast;
 pub mod ast_span;
+pub mod debug_print;
 pub mod error;
 pub mod lexer;
 pub mod name_resolution;
 pub mod parser;
-pub mod debug_print;
 pub mod type_resolution;
 
 use assembler::{Assembler, DisassembleOptions};
@@ -40,8 +40,8 @@ pub fn show_err(path: &PathBuf, err: CoffinError) {
 pub fn compile_file(path: &PathBuf) -> Result<Vec<u32>, CoffinError> {
     let code = fs::read_to_string(path)?;
     let lexer = Token::lexer(&code);
-    let (ast, _spans, _rodeo) = parser::parse(lexer);
-    let _vars = NameResolution::visit(&ast);
+    let (ast, spans, _rodeo, _errors) = parser::parse(lexer);
+    let (_vars, _errors) = NameResolution::visit(&ast, &spans);
     // let _print = pretty_print::PrettyPrint::new();
     // for err in errors{
     //     show_err(path, err.into());

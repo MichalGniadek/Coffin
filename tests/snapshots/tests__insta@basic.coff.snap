@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars), None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars), None, Some(errors0))"
 
 ---
 fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
@@ -24,3 +24,9 @@ fun fn1@X (arg2@6 : T@X)  {
 	(let var1@8 = ($var1@7 + #1))
 	(var1@8 = ($var1@8 + #1))
 }
+fun fn2@X ()  {
+	(not_declared@X = #123)
+}
+
+===
+Undeclared variable. [357..369]

@@ -1,4 +1,4 @@
-use crate::{error::ParserError, lexer::Token};
+use crate::lexer::Token;
 use lasso::Spur;
 use std::slice;
 
@@ -61,7 +61,7 @@ pub struct Attr(pub Name, pub Vec<(Id, Token)>);
 pub enum Attrs {
     Ok(Id, Vec<Attr>),
     None,
-    Error(Id, ParserError),
+    Error(Id),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,7 +90,7 @@ pub enum Expr {
     Float(Id, f32),
     Int(Id, i32),
     Block(Id, Vec<Expr>),
-    Error(Id, ParserError),
+    Error(Id),
 }
 
 #[derive(Debug)]
@@ -104,7 +104,7 @@ pub enum Item {
         ret: Option<(Id, Name)>,
         body: Expr,
     },
-    Error(Id, ParserError),
+    Error(Id),
 }
 
 pub trait Visitor {
@@ -121,7 +121,7 @@ pub trait Visitor {
                 ret,
                 body,
             } => self.fun(*fun_id, attrs, *name, *paren_id, params, ret, body),
-            Item::Error(id, kind) => self.item_error(*id, kind),
+            Item::Error(id) => self.item_error(*id),
         }
     }
 
@@ -140,7 +140,7 @@ pub trait Visitor {
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
             Expr::Block(id, exprs) => self.block(*id, exprs),
-            Expr::Error(id, kind) => self.expr_error(*id, kind),
+            Expr::Error(id) => self.expr_error(*id),
         }
     }
 
@@ -154,7 +154,7 @@ pub trait Visitor {
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out;
-    fn item_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;
+    fn item_error(&mut self, id: Id) -> Self::Out;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
     fn r#let(
@@ -170,5 +170,5 @@ pub trait Visitor {
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
-    fn expr_error(&mut self, id: Id, kind: &ParserError) -> Self::Out;
+    fn expr_error(&mut self, id: Id) -> Self::Out;
 }

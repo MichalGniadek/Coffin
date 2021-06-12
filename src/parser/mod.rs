@@ -6,20 +6,22 @@ pub mod spans_table;
 use self::{error_node::ErrorNode, spans_table::SpansTable};
 use crate::{
     ast::{Ast, Field, Id, Name},
-    error::{ParserError, ParserErrorKind},
+    error::{CoffinError, ParserErrorKind},
     lexer::Token,
 };
 use lasso::RodeoResolver;
 use logos::{Lexer, Span};
 
-pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
+pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver, Vec<CoffinError>) {
     let mut parser = Parser {
         lexer,
         spans: SpansTable::new(),
         curr_token: Token::EOF,
         curr_span: Span::default(),
+        errors: vec![],
     };
     parser.advance();
+
     let mut items = vec![];
 
     while parser.curr_token != Token::EOF {
@@ -30,6 +32,7 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver) {
         Ast::new(items, parser.spans.max_id()),
         parser.spans,
         parser.lexer.extras.into_resolver(),
+        parser.errors,
     )
 }
 
@@ -39,6 +42,8 @@ struct Parser<'a> {
 
     curr_token: Token,
     curr_span: Span,
+
+    errors: Vec<CoffinError>,
 }
 
 impl Parser<'_> {
@@ -104,7 +109,9 @@ impl Parser<'_> {
             self.advance();
         }
 
-        ErrorNode(ast_node_id, ParserError(kind, err_span)).into()
+        self.errors.push(CoffinError::ParserError(kind, err_span));
+
+        ErrorNode(ast_node_id).into()
     }
 
     /// If a token isn't one of '(', '{', '[' it returns an empty vec.

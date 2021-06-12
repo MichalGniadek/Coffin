@@ -1,11 +1,14 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
 #[attr1(), attr2('(' Identifier '{' '}' Int ')')]fun test ()  {
 	
 }
-#[Err: Expected token ']'.]fun test ()  {
+#[Err]fun test ()  {
 	
 }
+
+===
+Expected token ']'. [51..52]

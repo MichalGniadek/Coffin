@@ -1,6 +1,6 @@
 ---
-source: tests/insta_tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None)"
+source: tests/tests.rs
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
 
 ---
 #[attr1(), attr2('(' Identifier '{' '}' Int ')')]fun test ()  {

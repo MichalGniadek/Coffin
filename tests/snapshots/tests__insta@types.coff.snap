@@ -1,12 +1,15 @@
 ---
-source: tests/insta_tests.rs
+source: tests/tests.rs
 expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types))"
 
 ---
 fun a ()  {
 	(let a = #3: int): void
 	(let b = ($a: int + #5: int): int): void
-	{
+	(let c = {
 		($a: int + $b: int): int
-	}: int
-}: int
+	}: int): void
+	(let d = {
+		(a = $b: int): void
+	}: void): void
+}: void

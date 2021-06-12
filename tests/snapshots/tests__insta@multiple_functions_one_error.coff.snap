@@ -1,0 +1,12 @@
+---
+source: tests/tests.rs
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None)"
+
+---
+fun d ()  {
+	#2
+}
+Err: Expected token Identifier.
+fun asd ()  {
+	#3
+}

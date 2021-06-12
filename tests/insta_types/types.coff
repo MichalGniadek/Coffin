@@ -1,7 +1,8 @@
 fun a(){
     let a = 3
     let b = a + 5
-    {
+    let c ={
         a+b
     }
+    let d = {a = b}
 }

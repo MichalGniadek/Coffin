@@ -1,123 +1,60 @@
+pub mod types;
+
+use self::types::{Type, TypesTable, VariableTypes};
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
-    name_resolution::{VariableId, VariablesTable},
+    name_resolution::VariablesTable,
 };
-use std::ops::{Index, IndexMut};
+use lasso::RodeoResolver;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunType(Vec<Type>);
+pub fn visit(ast: &Ast, variables: &VariablesTable, resolver: &RodeoResolver) -> TypesTable {
+    let mut tr = TypeResolution {
+        variables,
+        variable_type: VariableTypes::new(variables.max_var_id()),
+        resolver,
+        types: TypesTable::new(ast.max_id()),
+    };
 
-impl FunType {
-    pub fn new(return_type: Type, parameters: &[Type]) -> Self {
-        let mut v = vec![return_type];
-        v.extend_from_slice(parameters);
-        Self(v)
+    // TODO: do a pass for gathering struct definitions
+    for item in ast {
+        tr.visit_item(item);
     }
 
-    pub fn get_return_type(&self) -> &Type {
-        &self.0[0]
-    }
-
-    pub fn get_arg_type(&self) -> &[Type] {
-        &self.0[1..]
-    }
+    tr.types
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
-    Void,
-    Error,
-    Int,
-    Float,
-    Fun(FunType),
-}
-
-#[derive(Debug, Clone)]
-pub struct TypesTable(Vec<Type>);
-
-impl TypesTable {
-    fn new(max_id: Id) -> Self {
-        Self(vec![Type::Error; usize::from(max_id)])
-    }
-}
-
-impl Index<Id> for TypesTable {
-    type Output = Type;
-
-    fn index(&self, index: Id) -> &Self::Output {
-        &self.0[usize::from(index)]
-    }
-}
-
-impl IndexMut<Id> for TypesTable {
-    fn index_mut(&mut self, index: Id) -> &mut Self::Output {
-        &mut self.0[usize::from(index)]
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct VariableTypes(Vec<Type>);
-
-impl VariableTypes {
-    fn new(max_id: VariableId) -> Self {
-        Self(vec![Type::Error; usize::from(max_id)])
-    }
-}
-
-impl Index<VariableId> for VariableTypes {
-    type Output = Type;
-
-    fn index(&self, index: VariableId) -> &Self::Output {
-        &self.0[usize::from(index)]
-    }
-}
-
-impl IndexMut<VariableId> for VariableTypes {
-    fn index_mut(&mut self, index: VariableId) -> &mut Self::Output {
-        &mut self.0[usize::from(index)]
-    }
-}
-
-pub struct TypeResolution<'a> {
+struct TypeResolution<'a, 'b> {
     variables: &'a VariablesTable,
     variable_type: VariableTypes,
+    resolver: &'b RodeoResolver,
     types: TypesTable,
 }
 
-impl<'a> TypeResolution<'a> {
-    pub fn visit(ast: &Ast, variables: &'a VariablesTable) -> TypesTable {
-        let mut slf = Self {
-            variables,
-            variable_type: VariableTypes::new(variables.max_var_id()),
-            types: TypesTable::new(ast.max_id()),
-        };
-
-        for item in ast {
-            slf.visit_item(item);
-        }
-
-        slf.types
-    }
-}
-
-impl Visitor for TypeResolution<'_> {
+impl Visitor for TypeResolution<'_, '_> {
     type Out = Id;
 
     fn fun(
         &mut self,
-        __fun_id: Id,
-        __attrs: &Attrs,
-        name: Name,
-        __paren_id: Id,
+        fun_id: Id,
+        _attrs: &Attrs,
+        _name: Name,
+        _paren_id: Id,
         params: &Vec<Field>,
-        __ret: &Option<(Id, Name)>,
+        _ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
-        if !params.is_empty() {
-            todo!("Function parameters not implemented")
-        };
+        for field in params {
+            let ttpe = match self.resolver.resolve(&field.ttpe.spur) {
+                "void" => Type::Void,
+                "int" => Type::Int,
+                _ => Type::Error,
+            };
+            let var_id = self.variables.get(field.name.id).unwrap();
+            self.variable_type[var_id] = ttpe;
+        }
+
         self.visit_expr(body);
-        name.id
+        fun_id
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
@@ -176,11 +113,10 @@ impl Visitor for TypeResolution<'_> {
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        let ttpe = match self.variables.get(name.id) {
+        self.types[name.id] = match self.variables.get(name.id) {
             Some(var_id) => self.variable_type[var_id].clone(),
             None => Type::Error,
         };
-        self.types[name.id] = ttpe;
 
         name.id
     }

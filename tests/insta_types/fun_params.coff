@@ -1,0 +1,4 @@
+fun asd(a: int, b: int){
+    a = 3
+    b = 5
+}

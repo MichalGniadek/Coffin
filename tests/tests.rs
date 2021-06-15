@@ -2,19 +2,17 @@ use coffin2::{
     ast::Ast,
     debug_print::DebugPrint,
     error::CoffinError,
-    lexer::Token,
-    name_resolution::NameResolution,
+    lexer, name_resolution,
     parser::{self, spans_table::SpansTable},
-    type_resolution::TypeResolution,
+    type_resolution,
 };
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
-use logos::Logos;
 use std::{fs, path::Path};
 
 fn get_ast(path: &Path) -> (Ast, SpansTable, RodeoResolver, Vec<CoffinError>) {
     let code = fs::read_to_string(path).unwrap();
-    let lexer = Token::lexer(&code);
+    let lexer = lexer::lex(&code);
     parser::parse(lexer)
 }
 
@@ -44,7 +42,7 @@ fn insta() {
     });
     glob!(r"insta_variables\*.coff", |path| {
         let (ast, spans, rodeo, mut errors0) = get_ast(path);
-        let (vars, errors1) = NameResolution::visit(&ast, &spans);
+        let (vars, errors1) = name_resolution::visit(&ast, &spans);
         errors0.extend(errors1);
         assert_snapshot!(DebugPrint::visit(
             &ast,
@@ -57,8 +55,8 @@ fn insta() {
     });
     glob!(r"insta_types\*.coff", |path| {
         let (ast, spans, rodeo, mut errors0) = get_ast(path);
-        let (vars, errors1) = NameResolution::visit(&ast, &spans);
-        let types = TypeResolution::visit(&ast, &vars);
+        let (vars, errors1) = name_resolution::visit(&ast, &spans);
+        let types = type_resolution::visit(&ast, &vars, &rodeo);
         errors0.extend(errors1);
         assert_snapshot!(DebugPrint::visit(
             &ast,

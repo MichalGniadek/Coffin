@@ -6,6 +6,22 @@ use crate::{
 use lasso::Spur;
 use std::collections::HashMap;
 
+pub fn visit(ast: &Ast, spans: &SpansTable) -> (VariablesTable, Vec<CoffinError>) {
+    let mut nr = NameResolution {
+        variables: VariablesTable::new(),
+        scopes: vec![],
+
+        spans,
+        errors: vec![],
+    };
+
+    for item in ast {
+        nr.visit_item(item);
+    }
+
+    (nr.variables, nr.errors)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VariableId(usize);
 
@@ -41,7 +57,7 @@ impl VariablesTable {
     }
 }
 
-pub struct NameResolution<'a> {
+struct NameResolution<'a> {
     variables: VariablesTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
 
@@ -50,22 +66,6 @@ pub struct NameResolution<'a> {
 }
 
 impl<'a> NameResolution<'a> {
-    pub fn visit(ast: &Ast, spans: &'a SpansTable) -> (VariablesTable, Vec<CoffinError>) {
-        let mut slf = Self {
-            variables: VariablesTable::new(),
-            scopes: vec![],
-
-            spans,
-            errors: vec![],
-        };
-
-        for item in ast {
-            slf.visit_item(item);
-        }
-
-        (slf.variables, slf.errors)
-    }
-
     fn new_variable(&mut self, name: Name) {
         let var_id = self.variables.new_variable(name.id);
         self.scopes.last_mut().unwrap().insert(name.spur, var_id);

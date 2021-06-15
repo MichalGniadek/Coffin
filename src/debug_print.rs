@@ -5,7 +5,7 @@ use crate::{
     error::CoffinError,
     name_resolution::VariablesTable,
     parser::spans_table::SpansTable,
-    type_resolution::{Type, TypesTable},
+    type_resolution::types::{Type, TypesTable},
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};

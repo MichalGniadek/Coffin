@@ -1,7 +1,16 @@
+use lasso::{Rodeo, Spur};
+use logos::{Lexer, Logos};
 use std::fmt::Display;
 
-use lasso::{Rodeo, Spur};
-use logos::Logos;
+pub fn lex(src: &str) -> Lexer<Token> {
+    let mut lexer = Token::lexer(src);
+
+    for s in ["void", "int"] {
+        lexer.extras.get_or_intern_static(s);
+    }
+
+    lexer
+}
 
 #[derive(Debug, PartialEq, Clone, Copy, Logos)]
 #[logos(extras = Rodeo)]

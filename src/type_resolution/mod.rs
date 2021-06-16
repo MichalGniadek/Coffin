@@ -63,12 +63,12 @@ impl Visitor for TypeResolution<'_, '_, '_> {
     ) -> Self::Out {
         for field in params {
             let ttpe = match self.resolver.resolve(&field.ttpe.spur) {
-                "void" => Type::Void,
-                "int" => Type::Int,
+                "void" => TypesTable::VOID_ID,
+                "int" => TypesTable::INT_ID,
                 _ => {
                     let span = self.spans[field.ttpe.id].clone();
                     self.errors.push(CoffinError::UndeclaredType(span));
-                    Type::Error
+                    TypesTable::ERROR_ID
                 }
             };
             let var_id = self.variables.get(field.name.id).unwrap();
@@ -80,7 +80,7 @@ impl Visitor for TypeResolution<'_, '_, '_> {
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
-        self.types[id] = Type::Error;
+        self.types.set_type_id(id, TypesTable::ERROR_ID);
         id
     }
 
@@ -91,11 +91,11 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         let left_type = &self.types[left_id];
         let right_type = &self.types[right_id];
 
-        self.types[id] = match (left_type, kind, right_type) {
-            (Type::Int, _, Type::Int) => Type::Int,
-            (Type::Float, _, Type::Float) => Type::Float,
-            (Type::Error, _, _) => Type::Error,
-            (_, _, Type::Error) => Type::Error,
+        let type_id = match (left_type, kind, right_type) {
+            (Type::Int, _, Type::Int) => TypesTable::INT_ID,
+            (Type::Float, _, Type::Float) => TypesTable::FLOAT_ID,
+            (Type::Error, _, _) => TypesTable::ERROR_ID,
+            (_, _, Type::Error) => TypesTable::ERROR_ID,
             _ => {
                 let left_span = ast_span::get_expr_span(left, self.spans);
                 let right_span = ast_span::get_expr_span(right, self.spans);
@@ -108,10 +108,11 @@ impl Visitor for TypeResolution<'_, '_, '_> {
                     right_type: format!("{}", right_type),
                 });
 
-                Type::Error
+                TypesTable::ERROR_ID
             }
         };
 
+        self.types.set_type_id(id, type_id);
         id
     }
 
@@ -125,9 +126,9 @@ impl Visitor for TypeResolution<'_, '_, '_> {
     ) -> Self::Out {
         let var_id = self.variables.get(name.id).unwrap();
         let expr_id = self.visit_expr(expr);
-        self.variable_type[var_id] = self.types[expr_id].clone();
+        self.variable_type[var_id] = self.types.type_id(expr_id);
 
-        self.types[let_id] = Type::Void;
+        self.types.set_type_id(let_id, TypesTable::VOID_ID);
         let_id
     }
 
@@ -135,7 +136,7 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         let expr_id = self.visit_expr(right);
         let expr_type = &self.types[expr_id];
         let var_type = match self.variables.get(name.id) {
-            Some(i) => &self.variable_type[i],
+            Some(i) => self.types.get_type(self.variable_type[i]),
             None => &Type::Error,
         };
 
@@ -148,40 +149,40 @@ impl Visitor for TypeResolution<'_, '_, '_> {
             });
         }
 
-        self.types[id] = Type::Void;
+        self.types.set_type_id(id, TypesTable::VOID_ID);
         id
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        self.types[name.id] = match self.variables.get(name.id) {
-            Some(var_id) => self.variable_type[var_id].clone(),
-            None => Type::Error,
+        match self.variables.get(name.id) {
+            Some(var_id) => self.types.set_type_id(name.id, self.variable_type[var_id]),
+            None => self.types.set_type_id(name.id, TypesTable::ERROR_ID),
         };
 
         name.id
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {
-        self.types[id] = Type::Float;
+        self.types.set_type_id(id, TypesTable::FLOAT_ID);
         id
     }
 
     fn int(&mut self, id: Id, _i: i32) -> Self::Out {
-        self.types[id] = Type::Int;
+        self.types.set_type_id(id, TypesTable::INT_ID);
         id
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
-        self.types[id] = match exprs.iter().map(|e| self.visit_expr(e)).last() {
-            Some(id) => self.types[id].clone(),
-            None => Type::Void,
+        match exprs.iter().map(|e| self.visit_expr(e)).last() {
+            Some(expr_id) => self.types.set_type_id(id, self.types.type_id(expr_id)),
+            None => self.types.set_type_id(id, TypesTable::VOID_ID),
         };
 
         id
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {
-        self.types[id] = Type::Error;
+        self.types.set_type_id(id, TypesTable::ERROR_ID);
         id
     }
 }

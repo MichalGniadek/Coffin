@@ -56,12 +56,49 @@ impl Display for Type {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeId(usize);
+
+impl From<TypeId> for usize {
+    fn from(id: TypeId) -> Self {
+        id.0
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct TypesTable(Vec<Type>);
+pub struct TypesTable {
+    types: Vec<Type>,
+    type_ids: Vec<TypeId>,
+}
 
 impl TypesTable {
+    pub const ERROR_ID: TypeId = TypeId(0);
+    pub const VOID_ID: TypeId = TypeId(1);
+    pub const INT_ID: TypeId = TypeId(2);
+    pub const FLOAT_ID: TypeId = TypeId(3);
+
     pub fn new(max_id: Id) -> Self {
-        Self(vec![Type::Error; usize::from(max_id)])
+        Self {
+            types: vec![Type::Error, Type::Void, Type::Int, Type::Float],
+            type_ids: vec![TypeId(0); usize::from(max_id)],
+        }
+    }
+
+    pub fn new_type(&mut self, ttpe: Type) -> TypeId {
+        self.types.push(ttpe);
+        TypeId(self.types.len() - 1)
+    }
+
+    pub fn set_type_id(&mut self, id: Id, type_id: TypeId) {
+        self.type_ids[usize::from(id)] = type_id;
+    }
+
+    pub fn type_id(&self, id: Id) -> TypeId {
+        self.type_ids[usize::from(id)]
+    }
+
+    pub fn get_type(&self, type_id: TypeId) -> &Type {
+        &self.types[usize::from(type_id)]
     }
 }
 
@@ -69,27 +106,21 @@ impl Index<Id> for TypesTable {
     type Output = Type;
 
     fn index(&self, index: Id) -> &Self::Output {
-        &self.0[usize::from(index)]
-    }
-}
-
-impl IndexMut<Id> for TypesTable {
-    fn index_mut(&mut self, index: Id) -> &mut Self::Output {
-        &mut self.0[usize::from(index)]
+        self.get_type(self.type_id(index))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct VariableTypes(Vec<Type>);
+pub struct VariableTypes(Vec<TypeId>);
 
 impl VariableTypes {
     pub fn new(max_id: VariableId) -> Self {
-        Self(vec![Type::Error; usize::from(max_id)])
+        Self(vec![TypeId(0); usize::from(max_id)])
     }
 }
 
 impl Index<VariableId> for VariableTypes {
-    type Output = Type;
+    type Output = TypeId;
 
     fn index(&self, index: VariableId) -> &Self::Output {
         &self.0[usize::from(index)]
@@ -99,5 +130,19 @@ impl Index<VariableId> for VariableTypes {
 impl IndexMut<VariableId> for VariableTypes {
     fn index_mut(&mut self, index: VariableId) -> &mut Self::Output {
         &mut self.0[usize::from(index)]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builtin_type_ids() {
+        let types = TypesTable::new(Id::new(0));
+        assert_eq!(types.get_type(TypesTable::ERROR_ID), &Type::Error);
+        assert_eq!(types.get_type(TypesTable::VOID_ID), &Type::Void);
+        assert_eq!(types.get_type(TypesTable::INT_ID), &Type::Int);
+        assert_eq!(types.get_type(TypesTable::FLOAT_ID), &Type::Float);
     }
 }

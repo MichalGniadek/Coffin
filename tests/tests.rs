@@ -2,24 +2,41 @@ use coffin2::{
     ast::Ast,
     debug_print::DebugPrint,
     error::CoffinError,
-    lexer, name_resolution,
+    lexer,
+    name_resolution::{self, VariablesTable},
     parser::{self, spans_table::SpansTable},
-    type_resolution,
+    type_resolution::{self, types::TypesTable},
 };
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
 use std::{fs, path::Path};
 
-fn get_ast(path: &Path) -> (Ast, SpansTable, RodeoResolver, Vec<CoffinError>) {
+fn get_ast(
+    path: &Path,
+) -> (
+    Ast,
+    SpansTable,
+    RodeoResolver,
+    VariablesTable,
+    TypesTable,
+    Vec<CoffinError>,
+) {
     let code = fs::read_to_string(path).unwrap();
     let lexer = lexer::lex(&code);
-    parser::parse(lexer)
+    let (ast, spans, rodeo, parser_errors) = parser::parse(lexer);
+    let (vars, name_errors) = name_resolution::visit(&ast, &spans);
+    let (types, type_errors) = type_resolution::visit(&ast, &vars, &rodeo, &spans);
+    let mut errors = vec![];
+    errors.extend(parser_errors);
+    errors.extend(name_errors);
+    errors.extend(type_errors);
+    (ast, spans, rodeo, vars, types, errors)
 }
 
 #[test]
-fn insta() {
+fn parser() {
     glob!(r"insta_parser\*.coff", |path| {
-        let (ast, _, rodeo, errors) = get_ast(path);
+        let (ast, _, rodeo, _, _, errors) = get_ast(path);
         assert_snapshot!(DebugPrint::visit(
             &ast,
             Some(&rodeo),
@@ -29,8 +46,12 @@ fn insta() {
             Some(errors)
         ));
     });
+}
+
+#[test]
+fn parser_spans() {
     glob!(r"insta_parser_spans\*.coff", |path| {
-        let (ast, spans, rodeo, errors) = get_ast(path);
+        let (ast, spans, rodeo, _, _, errors) = get_ast(path);
         assert_snapshot!(DebugPrint::visit(
             &ast,
             Some(&rodeo),
@@ -40,32 +61,34 @@ fn insta() {
             Some(errors)
         ));
     });
+}
+
+#[test]
+fn variables() {
     glob!(r"insta_variables\*.coff", |path| {
-        let (ast, spans, rodeo, mut errors0) = get_ast(path);
-        let (vars, errors1) = name_resolution::visit(&ast, &spans);
-        errors0.extend(errors1);
+        let (ast, _, rodeo, vars, _, errors) = get_ast(path);
         assert_snapshot!(DebugPrint::visit(
             &ast,
             Some(&rodeo),
             None,
             Some(&vars),
             None,
-            Some(errors0)
+            Some(errors)
         ));
     });
+}
+
+#[test]
+fn types() {
     glob!(r"insta_types\*.coff", |path| {
-        let (ast, spans, rodeo, mut errors0) = get_ast(path);
-        let (vars, errors1) = name_resolution::visit(&ast, &spans);
-        let (types, errors2) = type_resolution::visit(&ast, &vars, &rodeo, &spans);
-        errors0.extend(errors1);
-        errors0.extend(errors2);
+        let (ast, _, rodeo, _, types, errors) = get_ast(path);
         assert_snapshot!(DebugPrint::visit(
             &ast,
             Some(&rodeo),
             None,
             None,
             Some(&types),
-            Some(errors0)
+            Some(errors)
         ));
     });
 }

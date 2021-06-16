@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars), None, Some(errors0))"
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars), None, Some(errors))"
 
 ---
 fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
@@ -30,3 +30,6 @@ fun fn2@X ()  {
 
 ===
 Undeclared variable. [357..369]
+Undeclared type. [14..15]
+Undeclared type. [23..24]
+Undeclared type. [246..247]

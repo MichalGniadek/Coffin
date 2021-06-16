@@ -14,3 +14,5 @@ expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Som
 
 ===
 Expected prefix token. [85..86]
+Undeclared type. [15..18]
+Undeclared type. [28..31]

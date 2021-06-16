@@ -8,3 +8,5 @@ fun asd (parm1 : Tt1, param2 : Tt2) -> i32 {
 }
 
 ===
+Undeclared type. [15..18]
+Undeclared type. [28..31]

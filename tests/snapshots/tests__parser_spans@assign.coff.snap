@@ -10,3 +10,4 @@ expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Som
 
 ===
 Expression not assignable. [27..28]
+Undeclared variable. [14..15]

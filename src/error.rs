@@ -10,8 +10,28 @@ pub enum CoffinError {
     IOError(#[from] io::Error),
     #[error("{0} [{1:?}]")]
     ParserError(ParserErrorKind, Span),
+
     #[error("Undeclared variable. [{0:?}]")]
-    NameResolutionError(Span),
+    UndeclaredVariable(Span),
+
+    #[error("Undeclared type. [{0:?}]")]
+    UndeclaredType(Span),
+    #[error("Mismatched type. Expected {expected}, got {got}. [{span:?}]")]
+    MismatchedTypes {
+        span: Span,
+        expected: String,
+        got: String,
+    },
+    #[error(
+        "Wrong types for '{op}', {left_type} [{left_span:?}] and {right_type} [{right_span:?}]."
+    )]
+    WrongTypesForOperator {
+        op: String,
+        left_span: Span,
+        left_type: String,
+        right_span: Span,
+        right_type: String,
+    },
 }
 
 impl CoffinError {
@@ -23,11 +43,44 @@ impl CoffinError {
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message(format!("{}", kind))
                 ]),
-            CoffinError::NameResolutionError(span) => Diagnostic::error()
+            CoffinError::UndeclaredVariable(span) => Diagnostic::error()
                 .with_message("Undeclared variable.")
                 .with_labels(vec![
                     Label::primary((), span.clone()).with_message("Undeclared variable.")
                 ]),
+            CoffinError::UndeclaredType(span) => Diagnostic::error()
+                .with_message("Undeclared variable.")
+                .with_labels(vec![
+                    Label::primary((), span.clone()).with_message("Undeclared variable.")
+                ]),
+            CoffinError::MismatchedTypes {
+                span,
+                expected,
+                got,
+            } => {
+                let message = format!("Mismatched type. Expected {}, got {}.", expected, got);
+                Diagnostic::error()
+                    .with_message(message.clone())
+                    .with_labels(vec![Label::primary((), span.clone()).with_message(message)])
+            }
+            CoffinError::WrongTypesForOperator {
+                op,
+                left_span,
+                left_type,
+                right_span,
+                right_type,
+            } => {
+                let message = format!(
+                    "Wrong types for '{}', {} and {}.",
+                    op, left_type, right_type
+                );
+                Diagnostic::error()
+                    .with_message(message)
+                    .with_labels(vec![Label::primary((), left_span.clone())
+                        .with_message(format!("{}", left_type))])
+                    .with_labels(vec![Label::primary((), right_span.clone())
+                        .with_message(format!("{}", right_type))])
+            }
         }
     }
 }

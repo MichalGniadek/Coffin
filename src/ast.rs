@@ -1,6 +1,6 @@
 use crate::lexer::Token;
 use lasso::Spur;
-use std::slice;
+use std::{fmt::Display, slice};
 
 pub struct Ast {
     items: Vec<Item>,
@@ -73,6 +73,24 @@ pub enum BinOpKind {
     Rem,
     Pow,
     Eq,
+}
+
+impl Display for BinOpKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BinOpKind::Add => "+",
+                BinOpKind::Sub => "-",
+                BinOpKind::Mul => "*",
+                BinOpKind::Div => "/",
+                BinOpKind::Rem => "%",
+                BinOpKind::Pow => "**",
+                BinOpKind::Eq => "==",
+            }
+        )
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Some(errors))"
 
 ---
-[0..3] fun [4..5] a [5..6] ()  [7..36] {
+[0..3] fun [4..5] a [5..6] ()  [7..37] {
 	([14..15] a [16..17] = [18..21] #123)
 	[27..34] Err
 }

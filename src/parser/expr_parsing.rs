@@ -109,7 +109,7 @@ impl Parser<'_> {
 
         loop {
             if self.curr_token == Token::RightBrace {
-                self.spans[id].end = self.skip().start;
+                self.spans[id].end = self.skip().end;
                 return Correct(Expr::Block(id, exprs));
             }
 
@@ -117,7 +117,6 @@ impl Parser<'_> {
             exprs.push(expr);
 
             if is_panic && self.curr_token != Token::RightBrace {
-                self.spans[id].end = self.spans[id].start;
                 return PanicMode(Expr::Block(id, exprs));
             }
         }

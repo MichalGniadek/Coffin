@@ -163,20 +163,11 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
     }
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
-        let symbol = match kind {
-            BinOpKind::Add => "+",
-            BinOpKind::Sub => "-",
-            BinOpKind::Mul => "*",
-            BinOpKind::Div => "/",
-            BinOpKind::Rem => "%",
-            BinOpKind::Pow => "**",
-            BinOpKind::Eq => "==",
-        };
         format!(
             "({} {}{} {}){}",
             self.visit_expr(left),
             self.span(id),
-            symbol,
+            kind,
             self.visit_expr(right),
             self.ttpe(id),
         )

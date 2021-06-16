@@ -1,0 +1,21 @@
+---
+source: tests/tests.rs
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types), Some(errors0))"
+
+---
+fun a (arg1 : NonExistant, arg2 : int)  {
+	(arg2 = {
+		(#2: int + #2: int): int
+	}: int): void
+	(arg2 = {
+		(arg2 = #3: int): void
+	}: void): void
+	(#3: int + {
+		
+	}: void): error
+}: error
+
+===
+Undeclared type. [12..23]
+Mismatched type. Expected int, got void. [67..77]
+Wrong types for '+', int [83..84] and void [87..89].

@@ -111,7 +111,7 @@ impl Visitor for NameResolution<'_> {
 
         match found {
             Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self.errors.push(CoffinError::NameResolutionError(
+            None => self.errors.push(CoffinError::UndeclaredVariable(
                 self.spans[name.id].clone(),
             )),
         }
@@ -125,7 +125,7 @@ impl Visitor for NameResolution<'_> {
 
         match found {
             Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self.errors.push(CoffinError::NameResolutionError(
+            None => self.errors.push(CoffinError::UndeclaredVariable(
                 self.spans[name.id].clone(),
             )),
         }

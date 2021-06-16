@@ -56,8 +56,9 @@ fn insta() {
     glob!(r"insta_types\*.coff", |path| {
         let (ast, spans, rodeo, mut errors0) = get_ast(path);
         let (vars, errors1) = name_resolution::visit(&ast, &spans);
-        let types = type_resolution::visit(&ast, &vars, &rodeo);
+        let (types, errors2) = type_resolution::visit(&ast, &vars, &rodeo, &spans);
         errors0.extend(errors1);
+        errors0.extend(errors2);
         assert_snapshot!(DebugPrint::visit(
             &ast,
             Some(&rodeo),

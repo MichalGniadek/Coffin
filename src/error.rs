@@ -8,6 +8,7 @@ use std::io;
 pub enum CoffinError {
     #[error("IO error \"{0}\"")]
     IOError(#[from] io::Error),
+
     #[error("{0} [{1:?}]")]
     ParserError(ParserErrorKind, Span),
 
@@ -37,7 +38,7 @@ pub enum CoffinError {
 impl CoffinError {
     pub fn report(&self) -> Diagnostic<()> {
         match self {
-            CoffinError::IOError(_) => Diagnostic::error().with_message(format!("{}", self)),
+            CoffinError::IOError(err) => Diagnostic::error().with_message(format!("{}", err)),
             CoffinError::ParserError(kind, span) => Diagnostic::error()
                 .with_message(format!("{}", kind))
                 .with_labels(vec![
@@ -49,9 +50,9 @@ impl CoffinError {
                     Label::primary((), span.clone()).with_message("Undeclared variable.")
                 ]),
             CoffinError::UndeclaredType(span) => Diagnostic::error()
-                .with_message("Undeclared variable.")
+                .with_message("Undeclared type.")
                 .with_labels(vec![
-                    Label::primary((), span.clone()).with_message("Undeclared variable.")
+                    Label::primary((), span.clone()).with_message("Undeclared type.")
                 ]),
             CoffinError::MismatchedTypes {
                 span,
@@ -89,7 +90,7 @@ impl CoffinError {
 pub enum ParserErrorKind {
     #[error("Expected prefix token.")]
     ExpectedPrefixToken,
-    #[error("Expected token {0}.")]
+    #[error("Expected {0}.")]
     ExpectedToken(Token),
     #[error("Expression not assignable.")]
     ExpressionNotAssignable,

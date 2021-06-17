@@ -13,10 +13,11 @@ impl FunType {
         Self(parameters)
     }
 
-    pub fn get_return_type(&self) -> &TypeId {
+    pub fn get_return_type(&self) -> TypeId {
         self.0
             .last()
             .expect("Interal compiler error: FunType should always have a return type.")
+            .clone()
     }
 
     pub fn get_param_types(&self) -> &[TypeId] {

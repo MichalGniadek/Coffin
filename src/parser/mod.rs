@@ -3,7 +3,7 @@ mod expr_parsing;
 mod item_parsing;
 pub mod spans_table;
 
-use self::{error_node::ErrorNode, spans_table::SpansTable};
+use self::{error_node::ErrorNode, spans_table::SpanTable};
 use crate::{
     ast::{Ast, Field, Id, Name},
     error::{CoffinError, ParserErrorKind},
@@ -12,10 +12,10 @@ use crate::{
 use lasso::RodeoResolver;
 use logos::{Lexer, Span};
 
-pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver, Vec<CoffinError>) {
+pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpanTable, RodeoResolver, Vec<CoffinError>) {
     let mut parser = Parser {
         lexer,
-        spans: SpansTable::new(),
+        spans: SpanTable::new(),
         curr_token: Token::EOF,
         curr_span: Span::default(),
         errors: vec![],
@@ -38,7 +38,7 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpansTable, RodeoResolver, Vec<Co
 
 struct Parser<'a> {
     lexer: Lexer<'a, Token>,
-    spans: SpansTable,
+    spans: SpanTable,
 
     curr_token: Token,
     curr_span: Span,
@@ -74,6 +74,7 @@ impl Parser<'_> {
     /// Advances to the next token, add span to the Spans and return the
     /// corresponding id. Panics if the next token isn't the correct.
     fn consume_expect(&mut self, token: Token) -> Id {
+        // Remove later and use CoffinError instead of panics
         assert!(
             self.curr_token == token,
             "Compiler error: expected '{:?}' token.",

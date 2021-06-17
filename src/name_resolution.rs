@@ -1,14 +1,14 @@
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     error::CoffinError,
-    parser::spans_table::SpansTable,
+    parser::spans_table::SpanTable,
 };
 use lasso::Spur;
 use std::collections::HashMap;
 
-pub fn visit(ast: &Ast, spans: &SpansTable) -> (VariablesTable, Vec<CoffinError>) {
+pub fn visit(ast: &Ast, spans: &SpanTable) -> (VariableTable, Vec<CoffinError>) {
     let mut nr = NameResolution {
-        variables: VariablesTable::new(),
+        variables: VariableTable::new(),
         scopes: vec![],
 
         spans,
@@ -31,9 +31,9 @@ impl From<VariableId> for usize {
     }
 }
 
-pub struct VariablesTable(HashMap<Id, VariableId>, usize);
+pub struct VariableTable(HashMap<Id, VariableId>, usize);
 
-impl VariablesTable {
+impl VariableTable {
     pub fn max_var_id(&self) -> VariableId {
         VariableId(self.1)
     }
@@ -58,10 +58,10 @@ impl VariablesTable {
 }
 
 struct NameResolution<'a> {
-    variables: VariablesTable,
+    variables: VariableTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
 
-    spans: &'a SpansTable,
+    spans: &'a SpanTable,
     errors: Vec<CoffinError>,
 }
 

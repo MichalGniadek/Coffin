@@ -5,33 +5,22 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunType(Vec<Type>);
+pub struct FunType(Vec<TypeId>);
 
 impl FunType {
-    pub fn new(return_type: Type, parameters: &[Type]) -> Self {
-        let mut v = vec![return_type];
-        v.extend_from_slice(parameters);
-        Self(v)
+    pub fn new(return_type: TypeId, mut parameters: Vec<TypeId>) -> Self {
+        parameters.push(return_type);
+        Self(parameters)
     }
 
-    pub fn get_return_type(&self) -> &Type {
-        &self.0[0]
+    pub fn get_return_type(&self) -> &TypeId {
+        self.0
+            .last()
+            .expect("Interal compiler error: FunType should always have a return type.")
     }
 
-    pub fn get_param_types(&self) -> &[Type] {
-        &self.0[1..]
-    }
-}
-
-impl Display for FunType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let params: String = self
-            .get_param_types()
-            .iter()
-            .map(|t| format!("{}", t))
-            .intersperse(String::from(", "))
-            .collect();
-        write!(f, "fun({}) -> {}", params, self.get_return_type())
+    pub fn get_param_types(&self) -> &[TypeId] {
+        &self.0[..self.0.len() - 1]
     }
 }
 
@@ -51,7 +40,7 @@ impl Display for Type {
             Type::Error => unreachable!("Display is not implemented for error type."),
             Type::Int => write!(f, "int"),
             Type::Float => write!(f, "float"),
-            Type::Fun(fun) => write!(f, "{}", fun),
+            Type::Fun(_) => write!(f, "fun"),
         }
     }
 }
@@ -66,12 +55,12 @@ impl From<TypeId> for usize {
 }
 
 #[derive(Debug, Clone)]
-pub struct TypesTable {
+pub struct TypeTable {
     types: Vec<Type>,
     type_ids: Vec<TypeId>,
 }
 
-impl TypesTable {
+impl TypeTable {
     pub const ERROR_ID: TypeId = TypeId(0);
     pub const VOID_ID: TypeId = TypeId(1);
     pub const INT_ID: TypeId = TypeId(2);
@@ -102,7 +91,7 @@ impl TypesTable {
     }
 }
 
-impl Index<Id> for TypesTable {
+impl Index<Id> for TypeTable {
     type Output = Type;
 
     fn index(&self, index: Id) -> &Self::Output {
@@ -139,10 +128,10 @@ mod tests {
 
     #[test]
     fn builtin_type_ids() {
-        let types = TypesTable::new(Id::new(0));
-        assert_eq!(types.get_type(TypesTable::ERROR_ID), &Type::Error);
-        assert_eq!(types.get_type(TypesTable::VOID_ID), &Type::Void);
-        assert_eq!(types.get_type(TypesTable::INT_ID), &Type::Int);
-        assert_eq!(types.get_type(TypesTable::FLOAT_ID), &Type::Float);
+        let types = TypeTable::new(Id::new(0));
+        assert_eq!(types.get_type(TypeTable::ERROR_ID), &Type::Error);
+        assert_eq!(types.get_type(TypeTable::VOID_ID), &Type::Void);
+        assert_eq!(types.get_type(TypeTable::INT_ID), &Type::Int);
+        assert_eq!(types.get_type(TypeTable::FLOAT_ID), &Type::Float);
     }
 }

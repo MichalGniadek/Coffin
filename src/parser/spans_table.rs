@@ -3,9 +3,9 @@ use logos::Span;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone)]
-pub struct SpansTable(Vec<Span>);
+pub struct SpanTable(Vec<Span>);
 
-impl SpansTable {
+impl SpanTable {
     pub fn new() -> Self {
         Self(vec![])
     }
@@ -20,7 +20,7 @@ impl SpansTable {
     }
 }
 
-impl Index<Id> for SpansTable {
+impl Index<Id> for SpanTable {
     type Output = Span;
 
     fn index(&self, index: Id) -> &Self::Output {
@@ -28,7 +28,7 @@ impl Index<Id> for SpansTable {
     }
 }
 
-impl IndexMut<Id> for SpansTable {
+impl IndexMut<Id> for SpanTable {
     fn index_mut(&mut self, index: Id) -> &mut Self::Output {
         &mut self.0[usize::from(index)]
     }

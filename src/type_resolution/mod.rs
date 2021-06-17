@@ -1,28 +1,29 @@
 pub mod types;
 
-use self::types::{Type, TypesTable, VariableTypes};
+use self::types::{Type, TypeId, TypeTable, VariableTypes};
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     ast_span,
     error::CoffinError,
-    name_resolution::VariablesTable,
-    parser::spans_table::SpansTable,
+    name_resolution::VariableTable,
+    parser::spans_table::SpanTable,
+    type_resolution::types::FunType,
 };
 use lasso::RodeoResolver;
 
 pub fn visit(
     ast: &Ast,
-    variables: &VariablesTable,
+    variables: &VariableTable,
     resolver: &RodeoResolver,
-    spans: &SpansTable,
-) -> (TypesTable, Vec<CoffinError>) {
+    spans: &SpanTable,
+) -> (TypeTable, Vec<CoffinError>) {
     let mut tr = TypeResolution {
         resolver,
 
         variables,
         variable_type: VariableTypes::new(variables.max_var_id()),
 
-        types: TypesTable::new(ast.max_id()),
+        types: TypeTable::new(ast.max_id()),
 
         spans,
         errors: vec![],
@@ -39,13 +40,27 @@ pub fn visit(
 struct TypeResolution<'a, 'b, 'c> {
     resolver: &'b RodeoResolver,
 
-    variables: &'a VariablesTable,
+    variables: &'a VariableTable,
     variable_type: VariableTypes,
 
-    types: TypesTable,
+    types: TypeTable,
 
-    spans: &'c SpansTable,
+    spans: &'c SpanTable,
     errors: Vec<CoffinError>,
+}
+
+impl TypeResolution<'_, '_, '_> {
+    fn resolve_type(&mut self, name: &Name) -> TypeId {
+        match self.resolver.resolve(&name.spur) {
+            "void" => TypeTable::VOID_ID,
+            "int" => TypeTable::INT_ID,
+            _ => {
+                let span = self.spans[name.id].clone();
+                self.errors.push(CoffinError::UndeclaredType(span));
+                TypeTable::ERROR_ID
+            }
+        }
+    }
 }
 
 impl Visitor for TypeResolution<'_, '_, '_> {
@@ -58,29 +73,36 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         _name: Name,
         _paren_id: Id,
         params: &Vec<Field>,
-        _ret: &Option<(Id, Name)>,
+        ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
+        let mut param_types = vec![];
+
         for field in params {
-            let ttpe = match self.resolver.resolve(&field.ttpe.spur) {
-                "void" => TypesTable::VOID_ID,
-                "int" => TypesTable::INT_ID,
-                _ => {
-                    let span = self.spans[field.ttpe.id].clone();
-                    self.errors.push(CoffinError::UndeclaredType(span));
-                    TypesTable::ERROR_ID
-                }
-            };
+            let ttpe = self.resolve_type(&field.ttpe);
+            param_types.push(ttpe.clone());
+
             let var_id = self.variables.get(field.name.id).unwrap();
             self.variable_type[var_id] = ttpe;
         }
+
+        let return_type = match ret {
+            Some((_, ttpe)) => self.resolve_type(ttpe),
+            None => TypeTable::VOID_ID,
+        };
+
+        let type_id = self
+            .types
+            .new_type(Type::Fun(FunType::new(return_type, param_types)));
+
+        self.types.set_type_id(fun_id, type_id);
 
         self.visit_expr(body);
         fun_id
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
-        self.types.set_type_id(id, TypesTable::ERROR_ID);
+        self.types.set_type_id(id, TypeTable::ERROR_ID);
         id
     }
 
@@ -92,10 +114,10 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         let right_type = &self.types[right_id];
 
         let type_id = match (left_type, kind, right_type) {
-            (Type::Int, _, Type::Int) => TypesTable::INT_ID,
-            (Type::Float, _, Type::Float) => TypesTable::FLOAT_ID,
-            (Type::Error, _, _) => TypesTable::ERROR_ID,
-            (_, _, Type::Error) => TypesTable::ERROR_ID,
+            (Type::Int, _, Type::Int) => TypeTable::INT_ID,
+            (Type::Float, _, Type::Float) => TypeTable::FLOAT_ID,
+            (Type::Error, _, _) => TypeTable::ERROR_ID,
+            (_, _, Type::Error) => TypeTable::ERROR_ID,
             _ => {
                 let left_span = ast_span::get_expr_span(left, self.spans);
                 let right_span = ast_span::get_expr_span(right, self.spans);
@@ -108,7 +130,7 @@ impl Visitor for TypeResolution<'_, '_, '_> {
                     right_type: format!("{}", right_type),
                 });
 
-                TypesTable::ERROR_ID
+                TypeTable::ERROR_ID
             }
         };
 
@@ -128,7 +150,7 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         let expr_id = self.visit_expr(expr);
         self.variable_type[var_id] = self.types.type_id(expr_id);
 
-        self.types.set_type_id(let_id, TypesTable::VOID_ID);
+        self.types.set_type_id(let_id, TypeTable::VOID_ID);
         let_id
     }
 
@@ -149,40 +171,40 @@ impl Visitor for TypeResolution<'_, '_, '_> {
             });
         }
 
-        self.types.set_type_id(id, TypesTable::VOID_ID);
+        self.types.set_type_id(id, TypeTable::VOID_ID);
         id
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
         match self.variables.get(name.id) {
             Some(var_id) => self.types.set_type_id(name.id, self.variable_type[var_id]),
-            None => self.types.set_type_id(name.id, TypesTable::ERROR_ID),
+            None => self.types.set_type_id(name.id, TypeTable::ERROR_ID),
         };
 
         name.id
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {
-        self.types.set_type_id(id, TypesTable::FLOAT_ID);
+        self.types.set_type_id(id, TypeTable::FLOAT_ID);
         id
     }
 
     fn int(&mut self, id: Id, _i: i32) -> Self::Out {
-        self.types.set_type_id(id, TypesTable::INT_ID);
+        self.types.set_type_id(id, TypeTable::INT_ID);
         id
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
         match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(expr_id) => self.types.set_type_id(id, self.types.type_id(expr_id)),
-            None => self.types.set_type_id(id, TypesTable::VOID_ID),
+            None => self.types.set_type_id(id, TypeTable::VOID_ID),
         };
 
         id
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {
-        self.types.set_type_id(id, TypesTable::ERROR_ID);
+        self.types.set_type_id(id, TypeTable::ERROR_ID);
         id
     }
 }

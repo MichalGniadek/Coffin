@@ -3,9 +3,9 @@ use coffin2::{
     debug_print::DebugPrint,
     error::CoffinError,
     lexer,
-    name_resolution::{self, VariablesTable},
-    parser::{self, spans_table::SpansTable},
-    type_resolution::{self, types::TypesTable},
+    name_resolution::{self, VariableTable},
+    parser::{self, spans_table::SpanTable},
+    type_resolution::{self, types::TypeTable},
 };
 use insta::{assert_snapshot, glob};
 use lasso::RodeoResolver;
@@ -15,10 +15,10 @@ fn get_ast(
     path: &Path,
 ) -> (
     Ast,
-    SpansTable,
+    SpanTable,
     RodeoResolver,
-    VariablesTable,
-    TypesTable,
+    VariableTable,
+    TypeTable,
     Vec<CoffinError>,
 ) {
     let code = fs::read_to_string(path).unwrap();

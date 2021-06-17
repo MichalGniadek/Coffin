@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
 
 ---
-fun asd (parm1 : Tt1, param2 : Tt2) -> i32 {
+fun asd (parm1 : Tt1, param2 : Tt2) -> void {
 	
 }
 

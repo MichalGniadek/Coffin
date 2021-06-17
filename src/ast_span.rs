@@ -1,18 +1,18 @@
 use crate::{
     ast::{Attrs, BinOpKind, Expr, Field, Id, Item, Name, Visitor},
-    parser::spans_table::SpansTable,
+    parser::spans_table::SpanTable,
 };
 use logos::Span;
 
-pub fn get_item_span(item: &Item, spans: &SpansTable) -> Span {
+pub fn get_item_span(item: &Item, spans: &SpanTable) -> Span {
     SpanGetter(spans).visit_item(item)
 }
 
-pub fn get_expr_span(expr: &Expr, spans: &SpansTable) -> Span {
+pub fn get_expr_span(expr: &Expr, spans: &SpanTable) -> Span {
     SpanGetter(spans).visit_expr(expr)
 }
 
-struct SpanGetter<'a>(&'a SpansTable);
+struct SpanGetter<'a>(&'a SpanTable);
 
 impl Visitor for SpanGetter<'_> {
     type Out = Span;

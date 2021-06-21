@@ -64,7 +64,7 @@ impl SpirvGen<'_, '_, '_> {
         if let Some(id) = self.spirv_types.get(&type_id) {
             *id
         } else {
-            let ttpe = self.types.get_type(type_id);
+            let ttpe = &self.types[type_id];
             let spirv_id = match ttpe {
                 Type::Void => self.code.type_void(),
                 Type::Error => unreachable!(),
@@ -104,7 +104,7 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         let type_id = self.types.type_id(fun_id);
 
         let fun_type = self.type_id_to_spirv_id(type_id);
-        let return_type = match self.types.get_type(type_id) {
+        let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.type_id_to_spirv_id(fun.get_return_type()),
             _ => unreachable!("Internal compiler error: Function must have FunType type."),
         };

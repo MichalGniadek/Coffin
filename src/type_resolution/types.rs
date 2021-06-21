@@ -1,4 +1,7 @@
-use crate::{ast::Id, name_resolution::VariableId};
+use crate::{
+    ast::{Id, Name},
+    name_resolution::VariableTable,
+};
 use std::{
     fmt::Display,
     ops::{Index, IndexMut},
@@ -79,16 +82,26 @@ impl TypeTable {
         TypeId(self.types.len() - 1)
     }
 
-    pub fn set_type_id(&mut self, id: Id, type_id: TypeId) {
-        self.type_ids[usize::from(id)] = type_id;
-    }
-
     pub fn type_id(&self, id: Id) -> TypeId {
         self.type_ids[usize::from(id)]
     }
 
-    pub fn get_type(&self, type_id: TypeId) -> &Type {
-        &self.types[usize::from(type_id)]
+    pub fn set_type_id(&mut self, id: Id, type_id: TypeId) {
+        self.type_ids[usize::from(id)] = type_id;
+    }
+}
+
+impl Index<TypeId> for TypeTable {
+    type Output = Type;
+
+    fn index(&self, index: TypeId) -> &Self::Output {
+        &self.types[usize::from(index)]
+    }
+}
+
+impl IndexMut<TypeId> for TypeTable {
+    fn index_mut(&mut self, index: TypeId) -> &mut Self::Output {
+        &mut self.types[usize::from(index)]
     }
 }
 
@@ -96,30 +109,47 @@ impl Index<Id> for TypeTable {
     type Output = Type;
 
     fn index(&self, index: Id) -> &Self::Output {
-        self.get_type(self.type_id(index))
+        &self[self.type_id(index)]
+    }
+}
+
+impl IndexMut<Id> for TypeTable {
+    fn index_mut(&mut self, index: Id) -> &mut Self::Output {
+        let type_id = self.type_id(index);
+        &mut self[type_id]
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct VariableTypes(Vec<TypeId>);
+pub struct VariableTypes<'a> {
+    variable_table: &'a VariableTable,
+    /// Should be indexed with VariableIds
+    types: Vec<TypeId>,
+}
 
-impl VariableTypes {
-    pub fn new(max_id: VariableId) -> Self {
-        Self(vec![TypeId(0); usize::from(max_id)])
+impl<'a> VariableTypes<'a> {
+    pub fn new(variable_table: &'a VariableTable) -> Self {
+        Self {
+            variable_table,
+            types: vec![TypeId(0); usize::from(variable_table.max_var_id())],
+        }
+    }
+
+    pub fn set_variable_type_id(&mut self, name: Name, type_id: TypeId) {
+        let var_id = self.variable_table.get(name.id).unwrap();
+        self.types[usize::from(var_id)] = type_id;
     }
 }
 
-impl Index<VariableId> for VariableTypes {
+impl Index<Name> for VariableTypes<'_> {
     type Output = TypeId;
 
-    fn index(&self, index: VariableId) -> &Self::Output {
-        &self.0[usize::from(index)]
-    }
-}
-
-impl IndexMut<VariableId> for VariableTypes {
-    fn index_mut(&mut self, index: VariableId) -> &mut Self::Output {
-        &mut self.0[usize::from(index)]
+    fn index(&self, index: Name) -> &Self::Output {
+        &self
+            .variable_table
+            .get(index.id)
+            .map(|var_id| &self.types[usize::from(var_id)])
+            .unwrap_or(&TypeTable::ERROR_ID)
     }
 }
 
@@ -130,9 +160,9 @@ mod tests {
     #[test]
     fn builtin_type_ids() {
         let types = TypeTable::new(Id::new(0));
-        assert_eq!(types.get_type(TypeTable::ERROR_ID), &Type::Error);
-        assert_eq!(types.get_type(TypeTable::VOID_ID), &Type::Void);
-        assert_eq!(types.get_type(TypeTable::INT_ID), &Type::Int);
-        assert_eq!(types.get_type(TypeTable::FLOAT_ID), &Type::Float);
+        assert_eq!(types[TypeTable::ERROR_ID], Type::Error);
+        assert_eq!(types[TypeTable::VOID_ID], Type::Void);
+        assert_eq!(types[TypeTable::INT_ID], Type::Int);
+        assert_eq!(types[TypeTable::FLOAT_ID], Type::Float);
     }
 }

@@ -31,19 +31,20 @@ impl From<VariableId> for usize {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct VariableTable(HashMap<Id, VariableId>, usize);
 
 impl VariableTable {
+    fn new() -> Self {
+        Self(HashMap::new(), 0)
+    }
+
     pub fn max_var_id(&self) -> VariableId {
         VariableId(self.1)
     }
 
     pub fn get(&self, id: Id) -> Option<VariableId> {
         self.0.get(&id).cloned()
-    }
-
-    fn new() -> Self {
-        Self(HashMap::new(), 0)
     }
 
     fn insert(&mut self, id: Id, var_id: VariableId) {

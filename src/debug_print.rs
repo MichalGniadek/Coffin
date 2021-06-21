@@ -75,7 +75,7 @@ impl DebugPrint<'_, '_, '_, '_> {
 
     fn ttpe(&self, id: Id) -> String {
         let ttpe = match self.types {
-            Some(t) => &t[id],
+            Some(t) => &t[t.type_id(id)],
             None => return String::new(),
         };
 

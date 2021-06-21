@@ -106,6 +106,8 @@ pub enum Token {
     Mut,
     #[token("spirv")]
     Spirv,
+    #[token("unif")]
+    Uniform,
     #[regex(r"//.*")]
     Comment,
     EOF,
@@ -155,6 +157,7 @@ impl Display for Token {
             Token::Let => write!(f, "'let'"),
             Token::Mut => write!(f, "'mut'"),
             Token::Spirv => write!(f, "'spirv'"),
+            Token::Uniform => write!(f, "'unif'"),
             Token::Comment => write!(f, "'//'"),
             Token::EOF => write!(f, "EOF"),
             Token::Poisoned => unreachable!(),

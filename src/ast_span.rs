@@ -35,6 +35,15 @@ impl Visitor for SpanGetter<'_> {
         start.start..self.visit_expr(body).end
     }
 
+    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
+        let start = match attrs {
+            Attrs::Ok(id, _) => &self.0[*id],
+            Attrs::None => &self.0[unif_id],
+            Attrs::Error(id) => &self.0[*id],
+        };
+        start.start..self.0[field.ttpe.id].end
+    }
+
     fn item_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }
@@ -43,7 +52,7 @@ impl Visitor for SpanGetter<'_> {
         self.visit_expr(left).start..self.visit_expr(right).end
     }
 
-    fn r#let(
+    fn let_declaration(
         &mut self,
         let_id: Id,
         _mut_id: Option<Id>,

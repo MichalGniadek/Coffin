@@ -18,6 +18,6 @@ fun a ()  {
 }
 
 ===
-Expected token Identifier. [71..72]
-Expected token '='. [96..99]
+Expected Identifier. [71..72]
+Expected '='. [96..99]
 Expected prefix token. [120..121]

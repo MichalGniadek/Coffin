@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub fn visit(ast: &Ast, spans: &SpanTable) -> (VariableTable, Vec<CoffinError>) {
     let mut nr = NameResolution {
         variables: VariableTable::new(),
-        scopes: vec![],
+        scopes: vec![HashMap::new()],
 
         spans,
         errors: vec![],
@@ -93,7 +93,18 @@ impl Visitor for NameResolution<'_> {
         self.scopes.pop();
     }
 
-    fn r#let(
+    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+        self.new_variable(field.name);
+    }
+
+    fn item_error(&mut self, _id: Id) -> Self::Out {}
+
+    fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
+        self.visit_expr(left);
+        self.visit_expr(right);
+    }
+
+    fn let_declaration(
         &mut self,
         _let_id: Id,
         _mut_id: Option<Id>,
@@ -111,9 +122,9 @@ impl Visitor for NameResolution<'_> {
 
         match found {
             Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self.errors.push(CoffinError::UndeclaredVariable(
-                self.spans[name.id].clone(),
-            )),
+            None => self
+                .errors
+                .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone())),
         }
 
         self.visit_expr(right);
@@ -125,12 +136,13 @@ impl Visitor for NameResolution<'_> {
 
         match found {
             Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self.errors.push(CoffinError::UndeclaredVariable(
-                self.spans[name.id].clone(),
-            )),
+            None => self
+                .errors
+                .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone())),
         }
     }
-
+    fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
+    fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
     fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
         self.scopes.push(HashMap::new());
         for e in exprs {
@@ -139,13 +151,5 @@ impl Visitor for NameResolution<'_> {
         self.scopes.pop();
     }
 
-    fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
-        self.visit_expr(left);
-        self.visit_expr(right);
-    }
-
-    fn item_error(&mut self, _id: Id) -> Self::Out {}
-    fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
-    fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
     fn expr_error(&mut self, _id: Id) -> Self::Out {}
 }

@@ -13,13 +13,26 @@ impl Parser<'_> {
         };
 
         match self.curr_token {
+            Token::Uniform => self.parse_uniform(attrs),
             Token::Fun => self.parse_fun(attrs),
-            _ => todo!(),
+            _ => {
+                let ast_node_id = match attrs {
+                    Attrs::Ok(id, _) => Some(id),
+                    Attrs::None => None,
+                    Attrs::Error(id) => Some(id),
+                };
+                self.err_consume(
+                    ast_node_id,
+                    ParserErrorKind::ExpectedItem,
+                    None,
+                    &Self::ITEM_SYNC,
+                )
+            }
         }
     }
 
     fn parse_attributes(&mut self) -> Attrs {
-        let brackets_id = self.consume();
+        let brackets_id = self.consume_expect(Token::HashBracket);
         let mut attrs = vec![];
 
         while self.curr_token != Token::RightBracket {
@@ -54,6 +67,15 @@ impl Parser<'_> {
 
         self.spans[brackets_id].end = self.skip().end - 1;
         Attrs::Ok(brackets_id, attrs)
+    }
+
+    fn parse_uniform(&mut self, attrs: Attrs) -> Item {
+        let unif_id = self.consume_expect(Token::Uniform);
+        let field = match self.parse_field(unif_id) {
+            Ok(field) => field,
+            Err(err) => return err,
+        };
+        Item::Uniform(unif_id, attrs, field)
     }
 
     fn parse_fun(&mut self, attrs: Attrs) -> Item {

@@ -11,4 +11,4 @@ expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors
 }
 
 ===
-Expected token ']'. [51..52]
+Expected ']'. [51..52]

@@ -12,4 +12,4 @@ fun asd ()  {
 }
 
 ===
-Expected token Identifier. [26..27]
+Expected Identifier. [26..27]

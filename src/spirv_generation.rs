@@ -121,6 +121,10 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         Ok(fun_spirv_id)
     }
 
+    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, _field: &Field) -> Self::Out {
+        todo!()
+    }
+
     fn item_error(&mut self, _id: Id) -> Self::Out {
         // Shouldn't be a panic
         panic!("Internal compiler error: Spirv generation shouldn't be called with errors.")
@@ -130,7 +134,7 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         todo!()
     }
 
-    fn r#let(
+    fn let_declaration(
         &mut self,
         _let_id: Id,
         _mut_id: Option<Id>,

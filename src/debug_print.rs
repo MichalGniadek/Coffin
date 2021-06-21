@@ -97,22 +97,9 @@ impl DebugPrint<'_, '_, '_, '_> {
             self.name(field.ttpe)
         )
     }
-}
 
-impl Visitor for DebugPrint<'_, '_, '_, '_> {
-    type Out = String;
-
-    fn fun(
-        &mut self,
-        fun_id: Id,
-        attrs: &Attrs,
-        name: Name,
-        paren_id: Id,
-        params: &Vec<Field>,
-        ret: &Option<(Id, Name)>,
-        body: &Expr,
-    ) -> Self::Out {
-        let attr_text = match attrs {
+    fn attrs(&self, attrs: &Attrs) -> String {
+        match attrs {
             Attrs::Ok(id, attrs) => {
                 format!(
                     "{}#[{}]",
@@ -134,8 +121,23 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
             }
             Attrs::None => String::new(),
             Attrs::Error(id) => format!("#[{}Err]", self.span(*id)),
-        };
+        }
+    }
+}
 
+impl Visitor for DebugPrint<'_, '_, '_, '_> {
+    type Out = String;
+
+    fn fun(
+        &mut self,
+        fun_id: Id,
+        attrs: &Attrs,
+        name: Name,
+        paren_id: Id,
+        params: &Vec<Field>,
+        ret: &Option<(Id, Name)>,
+        body: &Expr,
+    ) -> Self::Out {
         let params_text = params
             .iter()
             .map(|f| self.field(f))
@@ -149,13 +151,22 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
 
         format!(
             "{}{}fun {} {}({}) {} {}",
-            attr_text,
+            self.attrs(attrs),
             self.span(fun_id),
             self.name(name),
             self.span(paren_id),
             params_text,
             ret_text,
             self.visit_expr(body)
+        )
+    }
+
+    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
+        format!(
+            "{}{}unif {}",
+            self.attrs(attrs),
+            self.span(unif_id),
+            self.field(field)
         )
     }
 
@@ -174,7 +185,7 @@ impl Visitor for DebugPrint<'_, '_, '_, '_> {
         )
     }
 
-    fn r#let(
+    fn let_declaration(
         &mut self,
         let_id: Id,
         mut_id: Option<Id>,

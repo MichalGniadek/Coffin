@@ -122,6 +122,7 @@ pub enum Item {
         ret: Option<(Id, Name)>,
         body: Expr,
     },
+    Uniform(Id, Attrs, Field),
     Error(Id),
 }
 
@@ -139,6 +140,7 @@ pub trait Visitor {
                 ret,
                 body,
             } => self.fun(*fun_id, attrs, *name, *paren_id, params, ret, body),
+            Item::Uniform(id, attrs, field) => self.uniform(*id, attrs, field),
             Item::Error(id) => self.item_error(*id),
         }
     }
@@ -152,7 +154,7 @@ pub trait Visitor {
                 name,
                 eq_id,
                 expr,
-            } => self.r#let(*let_id, *mut_id, *name, *eq_id, expr),
+            } => self.let_declaration(*let_id, *mut_id, *name, *eq_id, expr),
             Expr::Assign(id, name, right) => self.assign(*id, *name, right),
             Expr::Identifier(name) => self.identifier(*name),
             Expr::Float(id, f) => self.float(*id, *f),
@@ -172,10 +174,11 @@ pub trait Visitor {
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out;
+    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out;
     fn item_error(&mut self, id: Id) -> Self::Out;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
-    fn r#let(
+    fn let_declaration(
         &mut self,
         let_id: Id,
         mut_id: Option<Id>,

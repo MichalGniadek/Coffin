@@ -40,6 +40,7 @@ pub fn visit(
 struct TypeResolution<'a, 'b, 'c> {
     resolver: &'b RodeoResolver,
 
+    // Should be kind of combined into one to be easier to use
     variables: &'a VariableTable,
     variable_type: VariableTypes,
 
@@ -101,6 +102,15 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         fun_id
     }
 
+    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+        let ttpe = self.resolve_type(&field.ttpe);
+        let var_id = self.variables.get(field.name.id).unwrap();
+        self.variable_type[var_id] = ttpe;
+
+        self.types.set_type_id(unif_id, TypeTable::VOID_ID);
+        unif_id
+    }
+
     fn item_error(&mut self, id: Id) -> Self::Out {
         self.types.set_type_id(id, TypeTable::ERROR_ID);
         id
@@ -138,7 +148,7 @@ impl Visitor for TypeResolution<'_, '_, '_> {
         id
     }
 
-    fn r#let(
+    fn let_declaration(
         &mut self,
         let_id: Id,
         _mut_id: Option<Id>,

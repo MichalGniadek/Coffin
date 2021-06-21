@@ -1,0 +1,17 @@
+---
+source: tests/tests.rs
+expression: "DebugPrint::visit(&ast, Some(&rodeo), None, Some(&vars), None, Some(errors))"
+
+---
+unif a@0 : int@X
+unif b@1 : int@X
+fun f@X (a@2 : int@X)  {
+	$a@2
+	$b@1
+}
+fun g@X ()  {
+	$a@0
+	$b@1
+}
+
+===

@@ -1,0 +1,12 @@
+unif a: int
+unif b: int
+
+fun f(a: int){
+    a
+    b
+}
+
+fun g(){
+    a
+    b
+}

@@ -94,6 +94,8 @@ pub enum ParserErrorKind {
     ExpectedToken(Token),
     #[error("Expression not assignable.")]
     ExpressionNotAssignable,
+    #[error("Expected an item.")]
+    ExpectedItem,
 }
 
 impl ParserErrorKind {

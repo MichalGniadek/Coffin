@@ -47,8 +47,8 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
-    const ITEM_SYNC: [Token; 3] = [Token::Fun, Token::HashBracket, Token::EOF];
-    const EXPR_SYNC: [Token; 4] = const_concat(Self::ITEM_SYNC, [Token::RightBrace]);
+    const ITEM_SYNC: [Token; 4] = [Token::Fun, Token::HashBracket, Token::Uniform, Token::EOF];
+    const EXPR_SYNC: [Token; 5] = const_concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
     /// Shouldn't be called directly.
     fn advance(&mut self) {

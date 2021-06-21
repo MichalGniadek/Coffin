@@ -1,0 +1,7 @@
+unif a: int
+unif b: int
+
+fun a(a: void){
+    a
+    b
+}

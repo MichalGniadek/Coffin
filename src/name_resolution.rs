@@ -6,20 +6,20 @@ use crate::{
 use lasso::Spur;
 use std::collections::HashMap;
 
-pub fn visit(ast: &Ast, spans: &SpanTable) -> (VariableTable, Vec<CoffinError>) {
+pub fn visit(ast: &mut Ast) -> VariableTable {
     let mut nr = NameResolution {
         variables: VariableTable::new(),
         scopes: vec![HashMap::new()],
 
-        spans,
-        errors: vec![],
+        spans: &ast.spans,
+        errors: &mut ast.errors,
     };
 
-    for item in ast {
+    for item in &ast.items {
         nr.visit_item(item);
     }
 
-    (nr.variables, nr.errors)
+    nr.variables
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,15 +58,15 @@ impl VariableTable {
     }
 }
 
-struct NameResolution<'a> {
+struct NameResolution<'ast> {
     variables: VariableTable,
     scopes: Vec<HashMap<Spur, VariableId>>,
 
-    spans: &'a SpanTable,
-    errors: Vec<CoffinError>,
+    spans: &'ast SpanTable,
+    errors: &'ast mut Vec<CoffinError>,
 }
 
-impl<'a> NameResolution<'a> {
+impl NameResolution<'_> {
     fn new_variable(&mut self, name: Name) {
         let var_id = self.variables.new_variable(name.id);
         self.scopes.last_mut().unwrap().insert(name.spur, var_id);

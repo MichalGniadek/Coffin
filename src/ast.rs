@@ -1,28 +1,35 @@
-use crate::lexer::Token;
-use lasso::Spur;
-use std::{fmt::Display, slice};
+use crate::{error::CoffinError, lexer::Token, parser::spans_table::SpanTable};
+use lasso::{RodeoResolver, Spur};
+use std::fmt::Display;
 
 pub struct Ast {
-    items: Vec<Item>,
+    pub items: Vec<Item>,
     max_id: Id,
+
+    pub resolver: RodeoResolver,
+    pub spans: SpanTable,
+    pub errors: Vec<CoffinError>,
 }
 
 impl Ast {
-    pub fn new(items: Vec<Item>, max_id: Id) -> Self {
-        Self { items, max_id }
+    pub fn new(
+        items: Vec<Item>,
+        max_id: Id,
+        resolver: RodeoResolver,
+        spans: SpanTable,
+        errors: Vec<CoffinError>,
+    ) -> Self {
+        Self {
+            items,
+            max_id,
+            spans,
+            resolver,
+            errors,
+        }
     }
 
     pub fn max_id(&self) -> Id {
         self.max_id
-    }
-}
-
-impl<'a> IntoIterator for &'a Ast {
-    type Item = &'a Item;
-    type IntoIter = slice::Iter<'a, Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.iter()
     }
 }
 

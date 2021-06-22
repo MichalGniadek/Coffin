@@ -11,12 +11,12 @@ use rspirv::{
 };
 use std::collections::HashMap;
 
-pub fn visit(
-    ast: &Ast,
-    variables: &VariableTable,
-    types: &TypeTable,
-    spans: &SpanTable,
-) -> (Module, Vec<CoffinError>) {
+pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Result<Module, ()> {
+    // You can't generate code if there are any errors
+    if !ast.errors.is_empty() {
+        return Err(());
+    }
+
     let mut spirv = SpirvGen {
         variables,
         spirv_vars: HashMap::new(),
@@ -25,8 +25,8 @@ pub fn visit(
 
         code: Builder::new(),
 
-        spans,
-        errors: vec![],
+        spans: &ast.spans,
+        errors: &mut ast.errors,
     };
 
     spirv.code.set_version(1, 3);
@@ -34,7 +34,7 @@ pub fn visit(
         .code
         .memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::Simple);
 
-    for item in ast {
+    for item in &ast.items {
         let res = spirv.visit_item(item);
         if let Err(err) = res {
             // Remove later and use CoffinError instead of panics
@@ -42,21 +42,21 @@ pub fn visit(
         }
     }
 
-    (spirv.code.module(), spirv.errors)
+    Ok(spirv.code.module())
 }
 
 #[allow(dead_code)]
-struct SpirvGen<'a, 'b, 'c> {
-    variables: &'a VariableTable,
+struct SpirvGen<'ast, 'vars, 'types> {
+    variables: &'vars VariableTable,
     spirv_vars: HashMap<VariableId, u32>,
-    types: &'b TypeTable,
+    types: &'types TypeTable,
     spirv_types: HashMap<TypeId, u32>,
 
     code: Builder,
     // VariableId -> u32
     // TypeId -> u32
-    spans: &'c SpanTable,
-    errors: Vec<CoffinError>,
+    spans: &'ast SpanTable,
+    errors: &'ast mut Vec<CoffinError>,
 }
 
 impl SpirvGen<'_, '_, '_> {

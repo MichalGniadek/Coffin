@@ -11,43 +11,34 @@ use crate::{
 };
 use lasso::RodeoResolver;
 
-pub fn visit(
-    ast: &Ast,
-    variables: &VariableTable,
-    resolver: &RodeoResolver,
-    spans: &SpanTable,
-) -> (TypeTable, Vec<CoffinError>) {
+pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
     let mut tr = TypeResolution {
-        resolver,
-
         variables: VariableTypes::new(variables),
-
         types: TypeTable::new(ast.max_id()),
 
-        spans,
-        errors: vec![],
+        resolver: &ast.resolver,
+        spans: &ast.spans,
+        errors: &mut ast.errors,
     };
 
     // TODO: do a pass for gathering struct definitions
-    for item in ast {
+    for item in &ast.items {
         tr.visit_item(item);
     }
 
-    (tr.types, tr.errors)
+    tr.types
 }
 
-struct TypeResolution<'a, 'b, 'c> {
-    resolver: &'b RodeoResolver,
-
-    variables: VariableTypes<'a>,
-
+struct TypeResolution<'ast, 'vars> {
+    variables: VariableTypes<'vars>,
     types: TypeTable,
 
-    spans: &'c SpanTable,
-    errors: Vec<CoffinError>,
+    resolver: &'ast RodeoResolver,
+    spans: &'ast SpanTable,
+    errors: &'ast mut Vec<CoffinError>,
 }
 
-impl TypeResolution<'_, '_, '_> {
+impl TypeResolution<'_, '_> {
     fn resolve_type(&mut self, name: &Name) -> TypeId {
         match self.resolver.resolve(&name.spur) {
             "void" => TypeTable::VOID_ID,
@@ -61,7 +52,7 @@ impl TypeResolution<'_, '_, '_> {
     }
 }
 
-impl Visitor for TypeResolution<'_, '_, '_> {
+impl Visitor for TypeResolution<'_, '_> {
     type Out = TypeId;
 
     fn fun(

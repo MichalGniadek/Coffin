@@ -9,10 +9,9 @@ use crate::{
     error::{CoffinError, ParserErrorKind},
     lexer::Token,
 };
-use lasso::RodeoResolver;
 use logos::{Lexer, Span};
 
-pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpanTable, RodeoResolver, Vec<CoffinError>) {
+pub fn parse(lexer: Lexer<'_, Token>) -> Ast {
     let mut parser = Parser {
         lexer,
         spans: SpanTable::new(),
@@ -28,10 +27,11 @@ pub fn parse(lexer: Lexer<'_, Token>) -> (Ast, SpanTable, RodeoResolver, Vec<Cof
         items.push(parser.parse_item());
     }
 
-    (
-        Ast::new(items, parser.spans.max_id()),
-        parser.spans,
+    Ast::new(
+        items,
+        parser.spans.max_id(),
         parser.lexer.extras.into_resolver(),
+        parser.spans,
         parser.errors,
     )
 }

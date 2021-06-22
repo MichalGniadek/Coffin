@@ -48,28 +48,23 @@ fn main() {
     };
 
     let lexer = lexer::lex(&src);
-    let (ast, spans, resolver, parser_errors) = parser::parse(lexer);
-    let (variables, name_errors) = name_resolution::visit(&ast, &spans);
-    let (types, type_errors) = type_resolution::visit(&ast, &variables, &resolver, &spans);
+    let mut ast = parser::parse(lexer);
+    let variables = name_resolution::visit(&mut ast);
+    let types = type_resolution::visit(&mut ast, &variables);
 
-    let mut errors = vec![];
-    errors.extend(parser_errors);
-    errors.extend(name_errors);
-    errors.extend(type_errors);
-
-    if !errors.is_empty() {
+    if !ast.errors.is_empty() {
         let file = SimpleFile::new(
             opt.input.to_str().unwrap_or("Path is not valid UTF-8."),
             src,
         );
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = Config::default();
-        for err in errors {
+        for err in &ast.errors {
             term::emit(&mut writer.lock(), &config, &file, &err.report()).unwrap();
         }
         std::process::exit(1);
     } else {
-        let (_module, _errors) = spirv_generation::visit(&ast, &variables, &types, &spans);
+        let _module = spirv_generation::visit(&mut ast, &variables, &types);
         // println!("{}", module.disassemble())
     }
 

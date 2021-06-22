@@ -1,50 +1,46 @@
-use std::iter;
-
 use crate::{
     ast::{self, Ast, Attr, Attrs, Field, Visitor},
-    error::CoffinError,
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::{Type, TypeTable},
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};
+use std::iter;
 
-pub struct DebugPrint<'a, 'b, 'c, 'd> {
-    rodeo: Option<&'a RodeoResolver>,
-    spans: Option<&'b SpanTable>,
-    variables: Option<&'c VariableTable>,
-    types: Option<&'d TypeTable>,
+pub fn visit(
+    ast: &Ast,
+    rodeo: bool,
+    spans: bool,
+    variables: Option<&VariableTable>,
+    types: Option<&TypeTable>,
+) -> String {
+    let mut slf = DebugPrint {
+        rodeo: if rodeo { Some(&ast.resolver) } else { None },
+        variables,
+        spans: if spans { Some(&ast.spans) } else { None },
+        types,
+        indent: String::from('\n'),
+    };
+
+    ast.items
+        .iter()
+        .map(|i| slf.visit_item(i))
+        .chain(iter::once(String::from("\n===")))
+        .chain(ast.errors.iter().map(|err| format!("{}", err)))
+        .intersperse(String::from('\n'))
+        .collect()
+}
+
+pub struct DebugPrint<'ast, 'vars, 'types> {
+    rodeo: Option<&'ast RodeoResolver>,
+    spans: Option<&'ast SpanTable>,
+    variables: Option<&'vars VariableTable>,
+    types: Option<&'types TypeTable>,
     indent: String,
 }
 
-impl<'a, 'b, 'c, 'd> DebugPrint<'a, 'b, 'c, 'd> {
-    pub fn visit(
-        ast: &Ast,
-        rodeo: Option<&'a RodeoResolver>,
-        spans: Option<&'b SpanTable>,
-        variables: Option<&'c VariableTable>,
-        types: Option<&'d TypeTable>,
-        errors: Option<Vec<CoffinError>>,
-    ) -> String {
-        let mut slf = Self {
-            rodeo,
-            variables,
-            spans,
-            types,
-            indent: String::from('\n'),
-        };
-
-        ast.into_iter()
-            .map(|i| slf.visit_item(i))
-            .chain(iter::once(String::from("\n===")))
-            .chain(errors.iter().flatten().map(|err| format!("{}", err)))
-            .intersperse(String::from('\n'))
-            .collect()
-    }
-}
-
-impl DebugPrint<'_, '_, '_, '_> {
+impl DebugPrint<'_, '_, '_> {
     fn span(&self, id: Id) -> String {
         self.spans
             .map_or(String::new(), |s| format!("[{:?}] ", s[id]))
@@ -125,7 +121,7 @@ impl DebugPrint<'_, '_, '_, '_> {
     }
 }
 
-impl Visitor for DebugPrint<'_, '_, '_, '_> {
+impl Visitor for DebugPrint<'_, '_, '_> {
     type Out = String;
 
     fn fun(

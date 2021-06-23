@@ -1,5 +1,5 @@
 use codespan_reporting::{
-    files::SimpleFile,
+    files::{Files, SimpleFile},
     term::{
         self,
         termcolor::{ColorChoice, StandardStream},
@@ -9,6 +9,7 @@ use codespan_reporting::{
 use coffin2::{
     error::CoffinError, lexer, name_resolution, parser, spirv_generation, type_resolution,
 };
+use rspirv::binary::Disassemble;
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 
@@ -39,11 +40,8 @@ fn main() {
         Ok(src) => src,
         Err(err) => {
             let file = SimpleFile::new("", "");
-            let writer = StandardStream::stderr(ColorChoice::Always);
-            let config = Config::default();
             let err = CoffinError::from(err);
-            term::emit(&mut writer.lock(), &config, &file, &err.report()).unwrap();
-            std::process::exit(1);
+            exit_with_errors(&file, &[err]);
         }
     };
 
@@ -54,31 +52,24 @@ fn main() {
 
     if !ast.errors.is_empty() {
         let file = SimpleFile::new(
-            opt.input.to_str().unwrap_or("Path is not valid UTF-8."),
+            opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
             src,
         );
-        let writer = StandardStream::stderr(ColorChoice::Always);
-        let config = Config::default();
-        for err in &ast.errors {
-            term::emit(&mut writer.lock(), &config, &file, &err.report()).unwrap();
-        }
-        std::process::exit(1);
+        exit_with_errors(&file, &ast.errors);
     } else {
-        let _module = spirv_generation::visit(&mut ast, &variables, &types);
-        // println!("{}", module.disassemble())
+        let module = spirv_generation::visit(&mut ast, &variables, &types).unwrap();
+        println!("{}", module.disassemble())
     }
+}
 
-    // if opt.validate {
-    //     validate_spirv(&spirv).unwrap();
-    // }
-
-    // let mut out = opt.output.clone().unwrap_or(opt.input.clone());
-    // out.set_extension("spv");
-
-    // // write_spirv_binary(&spirv, &out).unwrap();
-
-    // if opt.disassemble {
-    //     out.set_extension("spv_diss");
-    //     // write_spirv_diss(&spirv, &out).unwrap();
-    // }
+fn exit_with_errors<'f, F>(files: &'f F, errors: &[CoffinError]) -> !
+where
+    F: Files<'f, FileId = ()>,
+{
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let config = Config::default();
+    for err in errors {
+        term::emit(&mut writer.lock(), &config, files, &err.report()).unwrap();
+    }
+    std::process::exit(1);
 }

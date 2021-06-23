@@ -2,7 +2,7 @@ use crate::{
     ast::{self, Ast, Attr, Attrs, Field, Visitor},
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
-    type_resolution::types::{Type, TypeTable},
+    type_resolution::types::TypeTable,
 };
 use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoResolver, Spur};
@@ -75,14 +75,7 @@ impl DebugPrint<'_, '_, '_> {
             None => return String::new(),
         };
 
-        // Probably should be moved to Display impl for Type in the future.
-        match ttpe {
-            Type::Void => format!(": void"),
-            Type::Error => format!(": error"),
-            Type::Int => format!(": int"),
-            Type::Float => format!(": float"),
-            Type::Fun(_) => format!(": fun"),
-        }
+        format!(": {}", ttpe)
     }
 
     fn field(&self, field: &Field) -> String {

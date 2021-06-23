@@ -10,6 +10,7 @@ use crate::{
     type_resolution::types::FunType,
 };
 use lasso::RodeoResolver;
+use rspirv::spirv::StorageClass;
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
     let mut tr = TypeResolution {
@@ -93,7 +94,11 @@ impl Visitor for TypeResolution<'_, '_> {
         let type_id = self.resolve_type(&field.ttpe);
         self.variables.set_variable_type_id(field.name, type_id);
 
-        self.types.set_type_id(unif_id, TypeTable::VOID_ID);
+        let pointer_type = self
+            .types
+            .new_type(Type::Pointer(StorageClass::UniformConstant, type_id));
+        self.types.set_type_id(unif_id, pointer_type);
+
         TypeTable::VOID_ID
     }
 
@@ -145,7 +150,11 @@ impl Visitor for TypeResolution<'_, '_> {
         let expr_id = self.visit_expr(expr);
         self.variables.set_variable_type_id(name, expr_id);
 
-        self.types.set_type_id(let_id, TypeTable::VOID_ID);
+        let pointer_type = self
+            .types
+            .new_type(Type::Pointer(StorageClass::UniformConstant, expr_id));
+        self.types.set_type_id(let_id, pointer_type);
+
         TypeTable::VOID_ID
     }
 

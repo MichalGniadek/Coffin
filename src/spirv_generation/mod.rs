@@ -1,15 +1,19 @@
+mod variable_spirv_ids;
+
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     error::CoffinError,
-    name_resolution::{VariableId, VariableTable},
+    name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::{Type, TypeId, TypeTable},
 };
 use rspirv::{
     dr::{self, Builder, Module},
-    spirv,
+    spirv::{self, StorageClass},
 };
 use std::collections::HashMap;
+
+use self::variable_spirv_ids::VariableSpirvIds;
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Result<Module, ()> {
     // You can't generate code if there are any errors
@@ -18,15 +22,14 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
     }
 
     let mut spirv = SpirvGen {
-        variables,
-        spirv_vars: HashMap::new(),
+        variables: VariableSpirvIds::new(variables),
         types,
         spirv_types: HashMap::new(),
 
         code: Builder::new(),
 
-        spans: &ast.spans,
-        errors: &mut ast.errors,
+        _spans: &ast.spans,
+        _errors: &mut ast.errors,
     };
 
     spirv.code.set_version(1, 3);
@@ -45,18 +48,14 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
     Ok(spirv.code.module())
 }
 
-#[allow(dead_code)]
 struct SpirvGen<'ast, 'vars, 'types> {
-    variables: &'vars VariableTable,
-    spirv_vars: HashMap<VariableId, u32>,
+    variables: VariableSpirvIds<'vars>,
     types: &'types TypeTable,
     spirv_types: HashMap<TypeId, u32>,
 
     code: Builder,
-    // VariableId -> u32
-    // TypeId -> u32
-    spans: &'ast SpanTable,
-    errors: &'ast mut Vec<CoffinError>,
+    _spans: &'ast SpanTable,
+    _errors: &'ast mut Vec<CoffinError>,
 }
 
 impl SpirvGen<'_, '_, '_> {
@@ -70,6 +69,23 @@ impl SpirvGen<'_, '_, '_> {
                 Type::Error => unreachable!(),
                 Type::Int => self.code.type_int(32, 1),
                 Type::Float => self.code.type_float(32),
+                Type::Image() => {
+                    let float_id = self.code.type_float(32);
+                    self.code.type_image(
+                        float_id,
+                        spirv::Dim::Dim2D,
+                        0,
+                        0,
+                        0,
+                        2,
+                        spirv::ImageFormat::Rgba8,
+                        None,
+                    )
+                }
+                Type::Pointer(storage_class, type_id) => {
+                    let type_spirv_id = self.type_id_to_spirv_id(*type_id);
+                    self.code.type_pointer(None, *storage_class, type_spirv_id)
+                }
                 Type::Fun(fun) => {
                     let param_types: Vec<_> = fun
                         .get_param_types()
@@ -102,16 +118,18 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         body: &Expr,
     ) -> Self::Out {
         let type_id = self.types.type_id(fun_id);
-
-        let fun_type = self.type_id_to_spirv_id(type_id);
+        let fun_type_spirv_id = self.type_id_to_spirv_id(type_id);
         let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.type_id_to_spirv_id(fun.get_return_type()),
             _ => unreachable!("Internal compiler error: Function must have FunType type."),
         };
 
-        let fun_spirv_id =
-            self.code
-                .begin_function(return_type, None, spirv::FunctionControl::NONE, fun_type)?;
+        let fun_spirv_id = self.code.begin_function(
+            return_type,
+            None,
+            spirv::FunctionControl::NONE,
+            fun_type_spirv_id,
+        )?;
 
         self.code.begin_block(None)?;
         self.visit_expr(body)?;
@@ -121,8 +139,14 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         Ok(fun_spirv_id)
     }
 
-    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, _field: &Field) -> Self::Out {
-        todo!()
+    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+        let pointer_id = self.type_id_to_spirv_id(self.types.type_id(unif_id));
+        let var = self
+            .code
+            .variable(pointer_id, None, StorageClass::UniformConstant, None);
+        self.variables.set_variable_spirv_id(field.name, var);
+
+        Ok(var)
     }
 
     fn item_error(&mut self, _id: Id) -> Self::Out {
@@ -149,8 +173,11 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         todo!()
     }
 
-    fn identifier(&mut self, _name: Name) -> Self::Out {
-        todo!()
+    fn identifier(&mut self, name: Name) -> Self::Out {
+        let type_id = self.types.type_id(name.id);
+        let type_id = self.type_id_to_spirv_id(type_id);
+        let var = self.variables[name];
+        self.code.load(type_id, None, var, None, [])
     }
 
     fn float(&mut self, id: Id, f: f32) -> Self::Out {

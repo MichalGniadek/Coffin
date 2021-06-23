@@ -1,17 +1,17 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types), Some(errors))"
+expression: "debug_print::visit(&ast, true, false, None, Some(&types))"
 
 ---
 fun a ()  {
-	(let a = #3: int): void
-	(let b = ($a: int + #5: int): int): void
+	(let a = #3: int): pointer
+	(let b = ($a: int + #5: int): int): pointer
 	(let c = {
 		($a: int + $b: int): int
-	}: int): void
+	}: int): pointer
 	(let d = {
 		(a = $b: int): void
-	}: void): void
+	}: void): pointer
 }: void
 
 ===

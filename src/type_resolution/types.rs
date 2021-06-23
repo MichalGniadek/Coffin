@@ -2,6 +2,7 @@ use crate::{
     ast::{Id, Name},
     name_resolution::VariableTable,
 };
+use rspirv::spirv;
 use std::{
     fmt::Display,
     ops::{Index, IndexMut},
@@ -34,6 +35,8 @@ pub enum Type {
     Error,
     Int,
     Float,
+    Image(/* TODO */),
+    Pointer(spirv::StorageClass, TypeId),
     Fun(FunType),
 }
 
@@ -41,9 +44,11 @@ impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Type::Void => write!(f, "void"),
-            Type::Error => unreachable!("Display is not implemented for error type."),
+            Type::Error => write!(f, "error"),
             Type::Int => write!(f, "int"),
             Type::Float => write!(f, "float"),
+            Type::Image() => write!(f, "image"),
+            Type::Pointer(_, _) => write!(f, "pointer"),
             Type::Fun(_) => write!(f, "fun"),
         }
     }

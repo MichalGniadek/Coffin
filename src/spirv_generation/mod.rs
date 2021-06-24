@@ -1,7 +1,7 @@
 mod variable_spirv_ids;
 
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
+    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     error::CoffinError,
     lexer::Token,
     name_resolution::VariableTable,
@@ -108,7 +108,7 @@ impl SpirvGen<'_, '_, '_> {
     }
 }
 
-impl Visitor for SpirvGen<'_, '_, '_> {
+impl ItemVisitor for SpirvGen<'_, '_, '_> {
     type Out = Result<u32, dr::Error>;
 
     fn fun(
@@ -185,7 +185,10 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         // Shouldn't be a panic
         panic!("Internal compiler error: Spirv generation shouldn't be called with errors.")
     }
+}
 
+impl ExprVisitor for SpirvGen<'_, '_, '_> {
+    type Out = Result<u32, dr::Error>;
     fn binary(&mut self, _id: Id, _kind: BinOpKind, _left: &Expr, _right: &Expr) -> Self::Out {
         todo!()
     }

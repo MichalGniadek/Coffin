@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
+    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     error::CoffinError,
     parser::spans_table::SpanTable,
 };
@@ -73,7 +73,7 @@ impl NameResolution<'_> {
     }
 }
 
-impl Visitor for NameResolution<'_> {
+impl ItemVisitor for NameResolution<'_> {
     type Out = ();
 
     fn fun(
@@ -99,7 +99,10 @@ impl Visitor for NameResolution<'_> {
     }
 
     fn item_error(&mut self, _id: Id) -> Self::Out {}
+}
 
+impl ExprVisitor for NameResolution<'_> {
+    type Out = ();
     fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         self.visit_expr(left);
         self.visit_expr(right);

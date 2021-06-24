@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, Ast, Attr, Attrs, Field, Visitor},
+    ast::{self, Ast, Attr, Attrs, ExprVisitor, Field, ItemVisitor},
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::TypeTable,
@@ -114,7 +114,7 @@ impl DebugPrint<'_, '_, '_> {
     }
 }
 
-impl Visitor for DebugPrint<'_, '_, '_> {
+impl ItemVisitor for DebugPrint<'_, '_, '_> {
     type Out = String;
 
     fn fun(
@@ -162,6 +162,10 @@ impl Visitor for DebugPrint<'_, '_, '_> {
     fn item_error(&mut self, id: Id) -> Self::Out {
         format!("{}Err", self.span(id))
     }
+}
+
+impl ExprVisitor for DebugPrint<'_, '_, '_> {
+    type Out = String;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         format!(

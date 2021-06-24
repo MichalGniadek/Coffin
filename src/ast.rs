@@ -145,7 +145,7 @@ pub enum Item {
     Error(Id),
 }
 
-pub trait Visitor {
+pub trait ItemVisitor {
     type Out;
 
     fn visit_item(&mut self, item: &Item) -> Self::Out {
@@ -163,6 +163,23 @@ pub trait Visitor {
             Item::Error(id) => self.item_error(*id),
         }
     }
+
+    fn fun(
+        &mut self,
+        fun_id: Id,
+        attrs: &Attrs,
+        name: Name,
+        paren_id: Id,
+        params: &Vec<Field>,
+        ret: &Option<(Id, Name)>,
+        body: &Expr,
+    ) -> Self::Out;
+    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out;
+    fn item_error(&mut self, id: Id) -> Self::Out;
+}
+
+pub trait ExprVisitor {
+    type Out;
 
     fn visit_expr(&mut self, expr: &Expr) -> Self::Out {
         match expr {
@@ -182,19 +199,6 @@ pub trait Visitor {
             Expr::Error(id) => self.expr_error(*id),
         }
     }
-
-    fn fun(
-        &mut self,
-        fun_id: Id,
-        attrs: &Attrs,
-        name: Name,
-        paren_id: Id,
-        params: &Vec<Field>,
-        ret: &Option<(Id, Name)>,
-        body: &Expr,
-    ) -> Self::Out;
-    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out;
-    fn item_error(&mut self, id: Id) -> Self::Out;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
     fn let_declaration(

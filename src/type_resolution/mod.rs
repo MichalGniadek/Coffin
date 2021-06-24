@@ -2,7 +2,7 @@ pub mod types;
 
 use self::types::{Type, TypeId, TypeTable, VariableTypes};
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
+    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     ast_span,
     error::CoffinError,
     name_resolution::VariableTable,
@@ -53,7 +53,7 @@ impl TypeResolution<'_, '_> {
     }
 }
 
-impl Visitor for TypeResolution<'_, '_> {
+impl ItemVisitor for TypeResolution<'_, '_> {
     type Out = TypeId;
 
     fn fun(
@@ -106,6 +106,10 @@ impl Visitor for TypeResolution<'_, '_> {
         self.types.set_type_id(id, TypeTable::ERROR_ID);
         TypeTable::ERROR_ID
     }
+}
+
+impl ExprVisitor for TypeResolution<'_, '_> {
+    type Out = TypeId;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         let left_id = self.visit_expr(left);

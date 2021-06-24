@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attrs, BinOpKind, Expr, Field, Id, Item, Name, Visitor},
+    ast::{Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name},
     parser::spans_table::SpanTable,
 };
 use logos::Span;
@@ -14,7 +14,7 @@ pub fn get_expr_span(expr: &Expr, spans: &SpanTable) -> Span {
 
 struct SpanGetter<'a>(&'a SpanTable);
 
-impl Visitor for SpanGetter<'_> {
+impl ItemVisitor for SpanGetter<'_> {
     type Out = Span;
 
     fn fun(
@@ -47,6 +47,10 @@ impl Visitor for SpanGetter<'_> {
     fn item_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }
+}
+
+impl ExprVisitor for SpanGetter<'_> {
+    type Out = Span;
 
     fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         self.visit_expr(left).start..self.visit_expr(right).end

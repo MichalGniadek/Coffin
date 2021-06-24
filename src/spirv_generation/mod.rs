@@ -1,5 +1,6 @@
 mod variable_spirv_ids;
 
+use self::variable_spirv_ids::VariableSpirvIds;
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     error::CoffinError,
@@ -8,14 +9,12 @@ use crate::{
     parser::spans_table::SpanTable,
     type_resolution::types::{Type, TypeId, TypeTable},
 };
-use lasso::RodeoResolver;
+use lasso::RodeoReader;
 use rspirv::{
     dr::{self, Builder, Module},
     spirv::{self, StorageClass},
 };
 use std::collections::HashMap;
-
-use self::variable_spirv_ids::VariableSpirvIds;
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Result<Module, ()> {
     // You can't generate code if there are any errors
@@ -27,7 +26,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         variables: VariableSpirvIds::new(variables),
         types,
         spirv_types: HashMap::new(),
-        resolver: &ast.resolver,
+        rodeo: &ast.rodeo,
 
         code: Builder::new(),
 
@@ -47,6 +46,10 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         }
     }
 
+    if !spirv.errors.is_empty() {
+        return Err(());
+    }
+
     Ok(spirv.code.module())
 }
 
@@ -54,7 +57,7 @@ struct SpirvGen<'ast, 'vars, 'types> {
     variables: VariableSpirvIds<'vars>,
     types: &'types TypeTable,
     spirv_types: HashMap<TypeId, u32>,
-    resolver: &'ast RodeoResolver,
+    rodeo: &'ast RodeoReader,
 
     code: Builder,
     _spans: &'ast SpanTable,
@@ -146,10 +149,12 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         self.code.ret()?;
         self.code.end_function()?;
 
-        let compute = attrs.get_attr("compute", self.resolver);
+        let compute = attrs.get_attr(self.rodeo.get("compute"));
         if compute.len() > 1 {
             todo!("More than one compute attribute")
         } else if compute.len() == 1 {
+            let compute = compute[0];
+
             self.code.entry_point(
                 spirv::ExecutionModel::GLCompute,
                 fun_spirv_id,
@@ -157,9 +162,8 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                 &[], // TODO
             );
 
-            let tokens = &compute[0].1;
-            match tokens[1..tokens.len() - 2] {
-                [(_, Token::Int(x)), (_, Token::Comma), (_, Token::Int(y)), (_, Token::Comma), (_, Token::Int(z))] => {
+            match compute.1[..] {
+                [_, (_, Token::Int(x)), (_, Token::Comma), (_, Token::Int(y)), (_, Token::Comma), (_, Token::Int(z)), _] => {
                     if x <= 0 || y <= 0 || z <= 0 {
                         todo!("Compute arguments must be positive.")
                     } else {

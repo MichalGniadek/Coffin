@@ -30,7 +30,7 @@ pub fn parse(lexer: Lexer<'_, Token>) -> Ast {
     Ast::new(
         items,
         parser.spans.max_id(),
-        parser.lexer.extras.into_resolver(),
+        parser.lexer.extras.into_reader(),
         parser.spans,
         parser.errors,
     )

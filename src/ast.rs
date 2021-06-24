@@ -1,12 +1,12 @@
 use crate::{error::CoffinError, lexer::Token, parser::spans_table::SpanTable};
-use lasso::{RodeoResolver, Spur};
+use lasso::{RodeoReader, Spur};
 use std::fmt::Display;
 
 pub struct Ast {
     pub items: Vec<Item>,
     max_id: Id,
 
-    pub resolver: RodeoResolver,
+    pub rodeo: RodeoReader,
     pub spans: SpanTable,
     pub errors: Vec<CoffinError>,
 }
@@ -15,7 +15,7 @@ impl Ast {
     pub fn new(
         items: Vec<Item>,
         max_id: Id,
-        resolver: RodeoResolver,
+        rodeo: RodeoReader,
         spans: SpanTable,
         errors: Vec<CoffinError>,
     ) -> Self {
@@ -23,7 +23,7 @@ impl Ast {
             items,
             max_id,
             spans,
-            resolver,
+            rodeo,
             errors,
         }
     }
@@ -72,13 +72,14 @@ pub enum Attrs {
 }
 
 impl Attrs {
-    pub fn get_attr(&self, name: &str, rodeo: &RodeoResolver) -> Vec<&Attr> {
+    pub fn get_attr(&self, name: Option<Spur>) -> Vec<&Attr> {
+        let name = match name {
+            Some(spur) => spur,
+            None => return vec![],
+        };
         match self {
             Attrs::None | Attrs::Error(_) => vec![],
-            Attrs::Ok(_, attrs) => attrs
-                .into_iter()
-                .filter(|a| rodeo.resolve(&a.0.spur) == name)
-                .collect(),
+            Attrs::Ok(_, attrs) => attrs.into_iter().filter(|a| a.0.spur == name).collect(),
         }
     }
 }

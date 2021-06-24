@@ -5,7 +5,7 @@ use crate::{
     type_resolution::types::TypeTable,
 };
 use ast::{BinOpKind, Expr, Id, Name};
-use lasso::{RodeoResolver, Spur};
+use lasso::{RodeoReader, Spur};
 use std::iter;
 
 pub fn visit(
@@ -16,7 +16,7 @@ pub fn visit(
     types: Option<&TypeTable>,
 ) -> String {
     let mut slf = DebugPrint {
-        rodeo: if rodeo { Some(&ast.resolver) } else { None },
+        rodeo: if rodeo { Some(&ast.rodeo) } else { None },
         variables,
         spans: if spans { Some(&ast.spans) } else { None },
         types,
@@ -33,7 +33,7 @@ pub fn visit(
 }
 
 pub struct DebugPrint<'ast, 'vars, 'types> {
-    rodeo: Option<&'ast RodeoResolver>,
+    rodeo: Option<&'ast RodeoReader>,
     spans: Option<&'ast SpanTable>,
     variables: Option<&'vars VariableTable>,
     types: Option<&'types TypeTable>,

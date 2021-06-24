@@ -9,7 +9,7 @@ use crate::{
     parser::spans_table::SpanTable,
     type_resolution::types::FunType,
 };
-use lasso::RodeoResolver;
+use lasso::RodeoReader;
 use rspirv::spirv::StorageClass;
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
@@ -17,7 +17,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
         variables: VariableTypes::new(variables),
         types: TypeTable::new(ast.max_id()),
 
-        resolver: &ast.resolver,
+        rodeo: &ast.rodeo,
         spans: &ast.spans,
         errors: &mut ast.errors,
     };
@@ -34,14 +34,14 @@ struct TypeResolution<'ast, 'vars> {
     variables: VariableTypes<'vars>,
     types: TypeTable,
 
-    resolver: &'ast RodeoResolver,
+    rodeo: &'ast RodeoReader,
     spans: &'ast SpanTable,
     errors: &'ast mut Vec<CoffinError>,
 }
 
 impl TypeResolution<'_, '_> {
     fn resolve_type(&mut self, name: &Name) -> TypeId {
-        match self.resolver.resolve(&name.spur) {
+        match self.rodeo.resolve(&name.spur) {
             "void" => TypeTable::VOID_ID,
             "int" => TypeTable::INT_ID,
             _ => {

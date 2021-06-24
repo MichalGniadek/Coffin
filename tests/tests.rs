@@ -6,21 +6,23 @@ use coffin2::{
     type_resolution::{self, types::TypeTable},
 };
 use insta::{assert_snapshot, glob};
+use rspirv::dr::Module;
 use std::{fs, path::Path};
 
-fn get_ast(path: &Path) -> (Ast, VariableTable, TypeTable) {
+fn test_util(path: &Path) -> (Ast, VariableTable, TypeTable, Module) {
     let code = fs::read_to_string(path).unwrap();
     let lexer = lexer::lex(&code);
     let mut ast = parser::parse(lexer);
     let vars = name_resolution::visit(&mut ast);
     let types = type_resolution::visit(&mut ast, &vars);
-    (ast, vars, types)
+    // let module = spirv_generation::visit(&mut ast, &vars, &types);
+    (ast, vars, types, Module::new()) // module.unwrap_or(Module::new()))
 }
 
 #[test]
 fn parser() {
     glob!(r"insta_parser\*.coff", |path| {
-        let (ast, _, _) = get_ast(path);
+        let (ast, _, _, _) = test_util(path);
         assert_snapshot!(debug_print::visit(&ast, true, false, None, None));
     });
 }
@@ -28,7 +30,7 @@ fn parser() {
 #[test]
 fn parser_spans() {
     glob!(r"insta_parser_spans\*.coff", |path| {
-        let (ast, _, _) = get_ast(path);
+        let (ast, _, _, _) = test_util(path);
         assert_snapshot!(debug_print::visit(&ast, true, true, None, None));
     });
 }
@@ -36,7 +38,7 @@ fn parser_spans() {
 #[test]
 fn variables() {
     glob!(r"insta_variables\*.coff", |path| {
-        let (ast, vars, _) = get_ast(path);
+        let (ast, vars, _, _) = test_util(path);
         assert_snapshot!(debug_print::visit(&ast, true, false, Some(&vars), None));
     });
 }
@@ -44,7 +46,7 @@ fn variables() {
 #[test]
 fn types() {
     glob!(r"insta_types\*.coff", |path| {
-        let (ast, _, types) = get_ast(path);
+        let (ast, _, types, _) = test_util(path);
         assert_snapshot!(debug_print::visit(&ast, true, false, None, Some(&types),));
     });
 }

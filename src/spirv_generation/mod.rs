@@ -2,7 +2,7 @@ mod variable_spirv_ids;
 
 use self::variable_spirv_ids::VariableSpirvIds;
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
+    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name},
     error::CoffinError,
     lexer::Token,
     name_resolution::VariableTable,
@@ -28,6 +28,8 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         spirv_types: HashMap::new(),
         rodeo: &ast.rodeo,
 
+        // Will be filled durgina a prepass
+        uniforms: vec![],
         code: Builder::new(),
 
         _spans: &ast.spans,
@@ -39,9 +41,32 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         .code
         .memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::Simple);
 
-    for item in &ast.items {
-        let res = spirv.visit_item(item);
-        if let Err(err) = res {
+    // Uniform collection prepass
+    spirv.uniforms = ast
+        .items
+        .iter()
+        .filter_map(|item| {
+            if let Item::Uniform(unif_id, attrs, field) = item {
+                match spirv.uniform(*unif_id, attrs, field) {
+                    Ok(id) => Some(id),
+                    Err(err) => {
+                        spirv.internal_error(format!("Builder error: {}", err));
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Standard pass without uniforms
+    for item in ast
+        .items
+        .iter()
+        .filter(|item| !matches!(item, Item::Uniform(_, _, _)))
+    {
+        if let Err(err) = spirv.visit_item(item) {
             spirv.internal_error(format!("Builder error: {}", err));
         }
     }
@@ -59,7 +84,9 @@ struct SpirvGen<'ast, 'vars, 'types> {
     spirv_types: HashMap<TypeId, u32>,
     rodeo: &'ast RodeoReader,
 
+    uniforms: Vec<u32>,
     code: Builder,
+
     _spans: &'ast SpanTable,
     errors: &'ast mut Vec<CoffinError>,
 }
@@ -159,10 +186,11 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                 spirv::ExecutionModel::GLCompute,
                 fun_spirv_id,
                 "main_compute",
-                &[], // TODO
+                &self.uniforms, // TODO: id
             );
 
             match compute.1[..] {
+                // Ignore delimiters at each end and ids for each token
                 [_, (_, Token::Int(x)), (_, Token::Comma), (_, Token::Int(y)), (_, Token::Comma), (_, Token::Int(z)), _] => {
                     if x <= 0 || y <= 0 || z <= 0 {
                         todo!("Compute arguments must be positive.")

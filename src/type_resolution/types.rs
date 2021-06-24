@@ -36,8 +36,12 @@ pub enum Type {
     Int,
     Float,
     Image(/* TODO */),
+    // Should probably be optimized. A Vec for each type
+    // with type_ids for every storage type instead of
+    // a new Type::Pointer
     Pointer(spirv::StorageClass, TypeId),
     Fun(FunType),
+    Vector(Vec<char>, TypeId),
 }
 
 impl Display for Type {
@@ -50,6 +54,7 @@ impl Display for Type {
             Type::Image() => write!(f, "image"),
             Type::Pointer(_, _) => write!(f, "pointer"),
             Type::Fun(_) => write!(f, "fun"),
+            Type::Vector(_, _) => write!(f, "vector"),
         }
     }
 }
@@ -74,10 +79,17 @@ impl TypeTable {
     pub const VOID_ID: TypeId = TypeId(1);
     pub const INT_ID: TypeId = TypeId(2);
     pub const FLOAT_ID: TypeId = TypeId(3);
+    pub const ID_ID: TypeId = TypeId(4);
 
     pub fn new(max_id: Id) -> Self {
         Self {
-            types: vec![Type::Error, Type::Void, Type::Int, Type::Float],
+            types: vec![
+                Type::Error,
+                Type::Void,
+                Type::Int,
+                Type::Float,
+                Type::Vector(vec!['x', 'y', 'z'], Self::INT_ID),
+            ],
             type_ids: vec![TypeId(0); usize::from(max_id)],
         }
     }
@@ -169,5 +181,9 @@ mod tests {
         assert_eq!(types[TypeTable::VOID_ID], Type::Void);
         assert_eq!(types[TypeTable::INT_ID], Type::Int);
         assert_eq!(types[TypeTable::FLOAT_ID], Type::Float);
+        assert_eq!(
+            types[TypeTable::ID_ID],
+            Type::Vector(vec!['x', 'y', 'z'], TypeTable::INT_ID)
+        );
     }
 }

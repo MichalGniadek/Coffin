@@ -12,7 +12,7 @@ use crate::{
 use lasso::RodeoReader;
 use rspirv::{
     dr::{self, Builder, Module},
-    spirv::{self, StorageClass},
+    spirv,
 };
 use std::collections::HashMap;
 
@@ -101,7 +101,9 @@ impl SpirvGen<'_, '_, '_> {
         if let Some(id) = self.spirv_types.get(&type_id) {
             *id
         } else {
+            // Spirv type hasn't been created it, so create it.
             let ttpe = &self.types[type_id];
+
             let spirv_id = match ttpe {
                 Type::Void => self.code.type_void(),
                 Type::Error => {
@@ -137,7 +139,14 @@ impl SpirvGen<'_, '_, '_> {
 
                     self.code.type_function(return_type, param_types)
                 }
+                Type::Vector(names, id) => {
+                    let count = names.len();
+                    let spirv_type = self.type_id_to_spirv_id(*id);
+                    self.code.type_vector(spirv_type, count as u32)
+                }
             };
+
+            // Cache it
             self.spirv_types.insert(type_id, spirv_id);
             spirv_id
         }
@@ -153,7 +162,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         attrs: &Attrs,
         _name: Name,
         _paren_id: Id,
-        _params: &Vec<Field>,
+        params: &Vec<Field>,
         _ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
@@ -182,11 +191,27 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         } else if compute.len() == 1 {
             let compute = compute[0];
 
+            if params.len() == 0 {
+                todo!("Compute shader function must have one parameter of type Id");
+            } else if params.len() > 1 {
+                todo!("Compute shader function must have one parameter of type Id");
+            } else {
+                let id_param = self.variables[params[0].name];
+
+                self.code.decorate(
+                    id_param,
+                    spirv::Decoration::BuiltIn,
+                    [dr::Operand::BuiltIn(spirv::BuiltIn::GlobalInvocationId)],
+                );
+
+                self.uniforms.push(id_param);
+            }
+
             self.code.entry_point(
                 spirv::ExecutionModel::GLCompute,
                 fun_spirv_id,
                 "main_compute",
-                &self.uniforms, // TODO: id
+                &self.uniforms,
             );
 
             match compute.1[..] {
@@ -213,7 +238,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         let pointer_id = self.type_id_to_spirv_id(self.types.type_id(unif_id));
         let var = self
             .code
-            .variable(pointer_id, None, StorageClass::UniformConstant, None);
+            .variable(pointer_id, None, spirv::StorageClass::UniformConstant, None);
         self.variables.set_variable_spirv_id(field.name, var);
 
         Ok(var)
@@ -259,7 +284,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         let pointer_id = self.type_id_to_spirv_id(self.types.type_id(let_id));
         let var = self
             .code
-            .variable(pointer_id, None, StorageClass::UniformConstant, None);
+            .variable(pointer_id, None, spirv::StorageClass::UniformConstant, None);
         self.variables.set_variable_spirv_id(name, var);
 
         let id = self.visit_expr(expr)?;

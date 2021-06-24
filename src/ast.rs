@@ -48,7 +48,7 @@ impl From<Id> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Name {
     pub id: Id,
     pub spur: Spur,

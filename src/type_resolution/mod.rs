@@ -44,6 +44,7 @@ impl TypeResolution<'_, '_> {
         match self.rodeo.resolve(&name.spur) {
             "void" => TypeTable::VOID_ID,
             "int" => TypeTable::INT_ID,
+            "Id" => TypeTable::ID_ID,
             _ => {
                 let span = self.spans[name.id].clone();
                 self.errors.push(CoffinError::UndeclaredType(span));

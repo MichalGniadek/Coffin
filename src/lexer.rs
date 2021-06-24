@@ -160,7 +160,7 @@ impl Display for Token {
             Token::Uniform => write!(f, "'unif'"),
             Token::Comment => write!(f, "'//'"),
             Token::EOF => write!(f, "EOF"),
-            Token::Poisoned => unreachable!(),
+            Token::Poisoned => write!(f, "POISONED"),
         }
     }
 }

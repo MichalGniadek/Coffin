@@ -32,7 +32,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         code: Builder::new(),
 
         _spans: &ast.spans,
-        _errors: &mut ast.errors,
+        errors: &mut ast.errors,
     };
 
     spirv.code.set_version(1, 3);
@@ -43,8 +43,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
     for item in &ast.items {
         let res = spirv.visit_item(item);
         if let Err(err) = res {
-            // Remove later and use CoffinError instead of panics
-            panic!("Internal compiler error: {}", err);
+            spirv.internal_error(format!("Builder error: {}", err));
         }
     }
 
@@ -59,10 +58,15 @@ struct SpirvGen<'ast, 'vars, 'types> {
 
     code: Builder,
     _spans: &'ast SpanTable,
-    _errors: &'ast mut Vec<CoffinError>,
+    errors: &'ast mut Vec<CoffinError>,
 }
 
 impl SpirvGen<'_, '_, '_> {
+    fn internal_error(&mut self, str: String) -> u32 {
+        self.errors.push(CoffinError::InternalError(str, None));
+        0
+    }
+
     fn type_id_to_spirv_id(&mut self, type_id: TypeId) -> u32 {
         if let Some(id) = self.spirv_types.get(&type_id) {
             *id
@@ -70,7 +74,9 @@ impl SpirvGen<'_, '_, '_> {
             let ttpe = &self.types[type_id];
             let spirv_id = match ttpe {
                 Type::Void => self.code.type_void(),
-                Type::Error => unreachable!(),
+                Type::Error => {
+                    self.internal_error(String::from("Trying to get spirv id for Type::Error"))
+                }
                 Type::Int => self.code.type_int(32, 1),
                 Type::Float => self.code.type_float(32),
                 Type::Image() => {
@@ -125,7 +131,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         let fun_type_spirv_id = self.type_id_to_spirv_id(type_id);
         let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.type_id_to_spirv_id(fun.get_return_type()),
-            _ => unreachable!("Internal compiler error: Function must have FunType type."),
+            _ => self.internal_error(String::from("Function must have a Type::Fun type")),
         };
 
         let fun_spirv_id = self.code.begin_function(
@@ -148,14 +154,14 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                 spirv::ExecutionModel::GLCompute,
                 fun_spirv_id,
                 "main_compute",
-                &[],
+                &[], // TODO
             );
 
             let tokens = &compute[0].1;
             match tokens[1..tokens.len() - 2] {
                 [(_, Token::Int(x)), (_, Token::Comma), (_, Token::Int(y)), (_, Token::Comma), (_, Token::Int(z))] => {
                     if x <= 0 || y <= 0 || z <= 0 {
-                        panic!("Compute arguments must be positive.")
+                        todo!("Compute arguments must be positive.")
                     } else {
                         self.code.execution_mode(
                             fun_spirv_id,
@@ -164,7 +170,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                         );
                     }
                 }
-                _ => panic!("Compute arguments must have 3 ints seperated by commas."),
+                _ => todo!("Compute arguments must have 3 ints seperated by commas."),
             };
         }
 
@@ -182,8 +188,9 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
     }
 
     fn item_error(&mut self, _id: Id) -> Self::Out {
-        // Shouldn't be a panic
-        panic!("Internal compiler error: Spirv generation shouldn't be called with errors.")
+        Ok(self.internal_error(String::from(
+            "Spirv generation shouldn't be called with errors.",
+        )))
     }
 }
 
@@ -228,12 +235,13 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
         match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(id) => id,
-            None => unreachable!("Internal compiler error: cannot generate spirv for empty block."),
+            None => todo!(),
         }
     }
 
     fn expr_error(&mut self, _id: Id) -> Self::Out {
-        // Shouldn't be a panic
-        panic!("Internal compiler error: Spirv generation shouldn't be called with errors.")
+        Ok(self.internal_error(String::from(
+            "Spirv generation shouldn't be called with errors.",
+        )))
     }
 }

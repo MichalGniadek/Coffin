@@ -47,7 +47,11 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
-    const ITEM_SYNC: [Token; 4] = [Token::Fun, Token::HashBracket, Token::Uniform, Token::EOF];
+    const EOF_SYNC: [Token; 1] = [Token::EOF];
+    const ITEM_SYNC: [Token; 4] = const_concat(
+        Self::EOF_SYNC,
+        [Token::Fun, Token::HashBracket, Token::Uniform],
+    );
     const EXPR_SYNC: [Token; 5] = const_concat(Self::ITEM_SYNC, [Token::RightBrace]);
 
     /// Shouldn't be called directly.
@@ -71,15 +75,19 @@ impl Parser<'_> {
         self.spans.push(span)
     }
 
-    /// Advances to the next token, add span to the Spans and return the
-    /// corresponding id. Panics if the next token isn't the correct.
     fn consume_expect(&mut self, token: Token) -> Id {
-        // Remove later and use CoffinError instead of panics
-        assert!(
-            self.curr_token == token,
-            "Compiler error: expected '{:?}' token.",
-            token
-        );
+        // If the next token isn't the expected one, add an internal compiler error to the errors
+        // and consume rest of the tokens.
+        if self.curr_token != token {
+            self.errors.push(CoffinError::InternalError(
+                format!("Consume expected: {}, got: {}", token, self.curr_token),
+                Some(self.curr_span.clone()),
+            ));
+            while !Self::EOF_SYNC.contains(&self.curr_token) {
+                self.advance();
+            }
+        }
+
         self.consume()
     }
 

@@ -9,6 +9,9 @@ pub enum CoffinError {
     #[error("IO error \"{0}\"")]
     IOError(#[from] io::Error),
 
+    #[error("Internal compiler error: {0} [{0:?}]. This is a bug, please report it.")]
+    InternalError(String, Option<Span>),
+
     #[error("{0} [{1:?}]")]
     ParserError(ParserErrorKind, Span),
 
@@ -39,6 +42,17 @@ impl CoffinError {
     pub fn report(&self) -> Diagnostic<()> {
         match self {
             CoffinError::IOError(err) => Diagnostic::error().with_message(format!("{}", err)),
+            CoffinError::InternalError(err, span) => {
+                let mut diag = Diagnostic::error().with_message(format!("{}", err));
+
+                if let Some(span) = span {
+                    diag = diag.with_labels(vec![
+                        Label::primary((), span.clone()).with_message(format!("{}", err))
+                    ]);
+                }
+
+                diag
+            }
             CoffinError::ParserError(kind, span) => Diagnostic::error()
                 .with_message(format!("{}", kind))
                 .with_labels(vec![

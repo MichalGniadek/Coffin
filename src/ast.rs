@@ -71,6 +71,18 @@ pub enum Attrs {
     Error(Id),
 }
 
+impl Attrs {
+    pub fn get_attr(&self, name: &str, rodeo: &RodeoResolver) -> Vec<&Attr> {
+        match self {
+            Attrs::None | Attrs::Error(_) => vec![],
+            Attrs::Ok(_, attrs) => attrs
+                .into_iter()
+                .filter(|a| rodeo.resolve(&a.0.spur) == name)
+                .collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOpKind {
     Add,

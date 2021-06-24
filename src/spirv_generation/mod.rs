@@ -3,10 +3,12 @@ mod variable_spirv_ids;
 use crate::{
     ast::{Ast, Attrs, BinOpKind, Expr, Field, Id, Name, Visitor},
     error::CoffinError,
+    lexer::Token,
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::{Type, TypeId, TypeTable},
 };
+use lasso::RodeoResolver;
 use rspirv::{
     dr::{self, Builder, Module},
     spirv::{self, StorageClass},
@@ -25,6 +27,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         variables: VariableSpirvIds::new(variables),
         types,
         spirv_types: HashMap::new(),
+        resolver: &ast.resolver,
 
         code: Builder::new(),
 
@@ -52,6 +55,7 @@ struct SpirvGen<'ast, 'vars, 'types> {
     variables: VariableSpirvIds<'vars>,
     types: &'types TypeTable,
     spirv_types: HashMap<TypeId, u32>,
+    resolver: &'ast RodeoResolver,
 
     code: Builder,
     _spans: &'ast SpanTable,
@@ -110,7 +114,7 @@ impl Visitor for SpirvGen<'_, '_, '_> {
     fn fun(
         &mut self,
         fun_id: Id,
-        _attrs: &Attrs,
+        attrs: &Attrs,
         _name: Name,
         _paren_id: Id,
         _params: &Vec<Field>,
@@ -135,6 +139,34 @@ impl Visitor for SpirvGen<'_, '_, '_> {
         self.visit_expr(body)?;
         self.code.ret()?;
         self.code.end_function()?;
+
+        let compute = attrs.get_attr("compute", self.resolver);
+        if compute.len() > 1 {
+            todo!("More than one compute attribute")
+        } else if compute.len() == 1 {
+            self.code.entry_point(
+                spirv::ExecutionModel::GLCompute,
+                fun_spirv_id,
+                "main_compute",
+                &[],
+            );
+
+            let tokens = &compute[0].1;
+            match tokens[1..tokens.len() - 2] {
+                [(_, Token::Int(x)), (_, Token::Comma), (_, Token::Int(y)), (_, Token::Comma), (_, Token::Int(z))] => {
+                    if x <= 0 || y <= 0 || z <= 0 {
+                        panic!("Compute arguments must be positive.")
+                    } else {
+                        self.code.execution_mode(
+                            fun_spirv_id,
+                            spirv::ExecutionMode::LocalSize,
+                            &[x as u32, y as u32, z as u32],
+                        );
+                    }
+                }
+                _ => panic!("Compute arguments must have 3 ints seperated by commas."),
+            };
+        }
 
         Ok(fun_spirv_id)
     }

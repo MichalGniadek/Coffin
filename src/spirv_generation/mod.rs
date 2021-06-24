@@ -228,23 +228,52 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
 
 impl ExprVisitor for SpirvGen<'_, '_, '_> {
     type Out = Result<u32, dr::Error>;
-    fn binary(&mut self, _id: Id, _kind: BinOpKind, _left: &Expr, _right: &Expr) -> Self::Out {
-        todo!()
+    fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
+        let type_id = self.types.type_id(id);
+        let spiv_type = self.type_id_to_spirv_id(type_id);
+        let ttpe = &self.types[id];
+        let left = self.visit_expr(left)?;
+        let right = self.visit_expr(right)?;
+
+        match (kind, ttpe) {
+            (BinOpKind::Add, Type::Int) => self.code.i_add(spiv_type, None, left, right),
+            (BinOpKind::Sub, Type::Int) => self.code.i_sub(spiv_type, None, left, right),
+            (BinOpKind::Mul, Type::Int) => self.code.i_mul(spiv_type, None, left, right),
+            (BinOpKind::Div, Type::Int) => self.code.s_div(spiv_type, None, left, right),
+            (BinOpKind::Rem, Type::Int) => self.code.s_rem(spiv_type, None, left, right),
+            (BinOpKind::Pow, Type::Int) => Ok(0), // pow() requires extensions.
+            _ => Ok(
+                self.internal_error(String::from("Incorrect types and/or operation in binary."))
+            ),
+        }
     }
 
     fn let_declaration(
         &mut self,
-        _let_id: Id,
+        let_id: Id,
         _mut_id: Option<Id>,
-        _name: Name,
+        name: Name,
         _eq_id: Id,
-        _expr: &Expr,
+        expr: &Expr,
     ) -> Self::Out {
-        todo!()
+        let pointer_id = self.type_id_to_spirv_id(self.types.type_id(let_id));
+        let var = self
+            .code
+            .variable(pointer_id, None, StorageClass::UniformConstant, None);
+        self.variables.set_variable_spirv_id(name, var);
+
+        let id = self.visit_expr(expr)?;
+        self.code.store(var, id, None, &[])?;
+
+        Ok(0) // TODO: should return void id
     }
 
-    fn assign(&mut self, _id: Id, _name: Name, _right: &Expr) -> Self::Out {
-        todo!()
+    fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
+        let var = self.variables[name];
+        let id = self.visit_expr(right)?;
+        self.code.store(var, id, None, &[])?;
+
+        Ok(0) // TODO: should return void id
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
@@ -267,7 +296,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
         match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(id) => id,
-            None => todo!(),
+            None => Ok(0), // TODO: should return void id
         }
     }
 

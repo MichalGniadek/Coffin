@@ -9,7 +9,7 @@ pub enum CoffinError {
     #[error("IO error \"{0}\"")]
     IOError(#[from] io::Error),
 
-    #[error("Internal compiler error: {0} [{0:?}]. This is a bug, please report it.")]
+    #[error("Internal compiler error: {0} [{1:?}]. This is a bug, please report it.")]
     InternalError(String, Option<Span>),
 
     #[error("{0} [{1:?}]")]

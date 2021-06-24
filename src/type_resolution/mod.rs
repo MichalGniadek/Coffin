@@ -156,7 +156,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
         let pointer_type = self
             .types
-            .new_type(Type::Pointer(StorageClass::UniformConstant, expr_id));
+            .new_type(Type::Pointer(StorageClass::Function, expr_id));
         self.types.set_type_id(let_id, pointer_type);
 
         TypeTable::VOID_ID

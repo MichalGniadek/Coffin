@@ -2,7 +2,7 @@ use coffin2::{
     ast::Ast,
     debug_print, lexer,
     name_resolution::{self, VariableTable},
-    parser,
+    parser, spirv_generation,
     type_resolution::{self, types::TypeTable},
 };
 use insta::{assert_snapshot, glob};
@@ -15,8 +15,8 @@ fn test_util(path: &Path) -> (Ast, VariableTable, TypeTable, Module) {
     let mut ast = parser::parse(lexer);
     let vars = name_resolution::visit(&mut ast);
     let types = type_resolution::visit(&mut ast, &vars);
-    // let module = spirv_generation::visit(&mut ast, &vars, &types);
-    (ast, vars, types, Module::new()) // module.unwrap_or(Module::new()))
+    let module = spirv_generation::visit(&mut ast, &vars, &types);
+    (ast, vars, types,   module.unwrap_or(Module::new()))
 }
 
 #[test]

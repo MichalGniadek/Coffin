@@ -67,7 +67,7 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[let_id].start..self.visit_expr(expr).end
     }
 
-    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
         let mut span = self.visit_expr(expr);
         if let Some(a) = access.last() {
             span.end = match a {

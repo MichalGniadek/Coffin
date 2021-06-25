@@ -1,0 +1,26 @@
+unif img: image2d
+
+fun f(a: float4){
+    a.xyzw
+    a.xxx
+    a.yx
+    a.w
+
+    a[3]
+    a[0]
+
+    img[123] = a
+
+    img[123]
+
+    a.xyaw
+    a.b
+    a[4]
+    a[a]
+
+    a.x.x
+
+    a.x = a.y
+
+    img.asd
+}

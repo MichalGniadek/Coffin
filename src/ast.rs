@@ -129,7 +129,7 @@ pub enum Expr {
         eq_id: Id,
         expr: Box<Expr>,
     },
-    Access(Box<Expr>, Vec<AccessType>),
+    Access(Id, Box<Expr>, Vec<AccessType>),
     Assign(Id, Box<Expr>, Vec<AccessType>, Box<Expr>),
     Identifier(Name),
     Float(Id, f32),
@@ -199,7 +199,7 @@ pub trait ExprVisitor {
                 eq_id,
                 expr,
             } => self.let_declaration(*let_id, *mut_id, *name, *eq_id, expr),
-            Expr::Access(expr, access) => self.access(expr, access),
+            Expr::Access(id, expr, access) => self.access(*id, expr, access),
             Expr::Assign(id, left, access, right) => self.assign(*id, left, access, right),
             Expr::Identifier(name) => self.identifier(*name),
             Expr::Float(id, f) => self.float(*id, *f),
@@ -218,7 +218,7 @@ pub trait ExprVisitor {
         eq_id: Id,
         expr: &Expr,
     ) -> Self::Out;
-    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out;
+    fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out;
     fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out;
     fn identifier(&mut self, name: Name) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;

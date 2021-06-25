@@ -120,7 +120,7 @@ impl ExprVisitor for NameResolution<'_> {
         self.new_variable(name);
     }
 
-    fn access(&mut self, expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
         self.visit_expr(expr)
     }
 

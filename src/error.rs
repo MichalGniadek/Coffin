@@ -36,6 +36,21 @@ pub enum CoffinError {
         right_span: Span,
         right_type: String,
     },
+
+    #[error("Swizzle isn't at the end. [{0:?}]")]
+    SwizzleNotAtTheEnd(Span),
+    #[error("Swizzle can't be used in an assignment. [{0:?}]")]
+    SwizzleAssignment(Span),
+    #[error("Index isn't an int. [{0:?}]")]
+    IndexIsntAnInt(Span),
+    #[error("Images are write only. [{0:?}]")]
+    ImageIsWriteonly(Span),
+    #[error("Type doesn't have fields. [{0:?}]")]
+    TypeDoesntHaveFields(Span),
+    #[error("Type can't be indexed. [{0:?}]")]
+    TypeCantBeIndexed(Span),
+    #[error("Incorrect vector fields. [{0:?}]")]
+    IncorrectVectorFields(Span),
 }
 
 impl CoffinError {
@@ -96,6 +111,7 @@ impl CoffinError {
                     .with_labels(vec![Label::primary((), right_span.clone())
                         .with_message(format!("{}", right_type))])
             }
+            _ => todo!("This will be refactored."),
         }
     }
 }
@@ -111,7 +127,7 @@ pub enum ParserErrorKind {
     #[error("Expected an item.")]
     ExpectedItem,
     #[error("Expected identifier after the dot operator.")]
-    ExpectedIdentifierAfterDot
+    ExpectedIdentifierAfterDot,
 }
 
 impl ParserErrorKind {

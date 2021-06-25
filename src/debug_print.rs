@@ -215,13 +215,13 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
-        format!("{}{}", self.visit_expr(expr), self.print_access(access))
+    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+        format!("({}){}", self.visit_expr(expr), self.print_access(access))
     }
 
     fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
         format!(
-            "({} {}{}= {}){}",
+            "(({}){} {}= {}){}",
             self.visit_expr(left),
             self.print_access(access),
             self.span(id),

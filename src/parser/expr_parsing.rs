@@ -175,7 +175,7 @@ impl Parser<'_> {
                     (Expr::Identifier(n), Assign, right) => {
                         Expr::Assign(id, Box::new(Expr::Identifier(n)), vec![], Box::new(right))
                     }
-                    (Expr::Access(expr, access), Assign, right) => {
+                    (Expr::Access(_, expr, access), Assign, right) => {
                         Expr::Assign(id, expr, access, Box::new(right))
                     }
                     (left, Assign, right) => {
@@ -193,12 +193,12 @@ impl Parser<'_> {
                     }
 
                     // Dot access
-                    (Expr::Access(expr, mut access), DotAccess, Expr::Identifier(member)) => {
+                    (Expr::Access(a_id, expr, mut access), DotAccess, Expr::Identifier(member)) => {
                         access.push(AccessType::Dot(id, member));
-                        Expr::Access(expr, access)
+                        Expr::Access(a_id, expr, access)
                     }
                     (left, DotAccess, Expr::Identifier(member)) => {
-                        Expr::Access(Box::new(left), vec![AccessType::Dot(id, member)])
+                        Expr::Access(id, Box::new(left), vec![AccessType::Dot(id, member)])
                     }
                     (left, DotAccess, right) => {
                         let left_span = ast_span::get_expr_span(&left, &self.spans);
@@ -216,13 +216,15 @@ impl Parser<'_> {
                     }
 
                     // Index access
-                    (Expr::Access(expr, mut access), IndexAccess, right) => {
+                    (Expr::Access(a_id, expr, mut access), IndexAccess, right) => {
                         access.push(AccessType::Index(id, Box::new(right)));
-                        Expr::Access(expr, access)
+                        Expr::Access(a_id, expr, access)
                     }
-                    (left, IndexAccess, right) => {
-                        Expr::Access(Box::new(left), vec![AccessType::Index(id, Box::new(right))])
-                    }
+                    (left, IndexAccess, right) => Expr::Access(
+                        id,
+                        Box::new(left),
+                        vec![AccessType::Index(id, Box::new(right))],
+                    ),
                 };
 
                 if is_panic {

@@ -45,6 +45,15 @@ impl TypeResolution<'_, '_> {
         match self.rodeo.resolve(&name.spur) {
             "void" => TypeTable::VOID_ID,
             "int" => TypeTable::INT_ID,
+            "int1" => TypeTable::IVEC_ID[1],
+            "int2" => TypeTable::IVEC_ID[2],
+            "int3" => TypeTable::IVEC_ID[3],
+            "int4" => TypeTable::IVEC_ID[4],
+            "float1" => TypeTable::FVEC_ID[1],
+            "float2" => TypeTable::FVEC_ID[2],
+            "float3" => TypeTable::FVEC_ID[3],
+            "float4" => TypeTable::FVEC_ID[4],
+            "image2d" => TypeTable::IMAGE_ID,
             "Id" => TypeTable::ID_ID,
             _ => {
                 let span = self.spans[name.id].clone();
@@ -52,6 +61,95 @@ impl TypeResolution<'_, '_> {
                 TypeTable::ERROR_ID
             }
         }
+    }
+
+    fn internal_error(&mut self, str: String) -> TypeId {
+        self.errors.push(CoffinError::InternalError(str, None));
+        TypeTable::ERROR_ID
+    }
+
+    fn access_type(
+        &mut self,
+        access: &Vec<AccessType>,
+        mut type_id: TypeId,
+        assign: bool,
+    ) -> TypeId {
+        for (i, a) in access.iter().enumerate() {
+            type_id = match (&self.types[type_id], a) {
+                (Type::Vector(members, vec_type), AccessType::Dot(_, member)) => {
+                    if i != access.len() - 1 {
+                        self.errors.push(CoffinError::SwizzleNotAtTheEnd(
+                            self.spans[member.id].clone(),
+                        ));
+                        return TypeTable::ERROR_ID;
+                    } else if assign {
+                        self.errors.push(CoffinError::SwizzleAssignment(
+                            self.spans[member.id].clone(),
+                        ));
+                        return TypeTable::ERROR_ID;
+                    }
+
+                    let member_str = self.rodeo.resolve(&member.spur);
+
+                    if member_str.chars().all(|c| members.contains(&c)) {
+                        if vec_type == &TypeTable::INT_ID {
+                            TypeTable::IVEC_ID[member_str.chars().count()]
+                        } else if vec_type == &TypeTable::FLOAT_ID {
+                            TypeTable::FVEC_ID[member_str.chars().count()]
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        self.errors.push(CoffinError::IncorrectVectorFields(
+                            self.spans[member.id].clone(),
+                        ));
+                        return TypeTable::ERROR_ID;
+                    }
+                }
+                (_, AccessType::Dot(_, member)) => {
+                    self.errors.push(CoffinError::TypeDoesntHaveFields(
+                        self.spans[member.id].clone(),
+                    ));
+                    return TypeTable::ERROR_ID;
+                }
+                (&Type::Vector(_, vec_type), AccessType::Index(_, expr)) => {
+                    if self.visit_expr(expr) == TypeTable::INT_ID {
+                        vec_type
+                    } else {
+                        self.errors
+                            .push(CoffinError::IndexIsntAnInt(ast_span::get_expr_span(
+                                expr,
+                                &self.spans,
+                            )));
+                        return TypeTable::ERROR_ID;
+                    }
+                }
+                (Type::Image(), AccessType::Index(id, expr)) => {
+                    if self.visit_expr(expr) != TypeTable::INT_ID {
+                        self.errors
+                            .push(CoffinError::IndexIsntAnInt(ast_span::get_expr_span(
+                                expr,
+                                &self.spans,
+                            )));
+                        return TypeTable::ERROR_ID;
+                    };
+
+                    if !assign {
+                        self.errors
+                            .push(CoffinError::ImageIsWriteonly(self.spans[*id].clone()));
+                        return TypeTable::ERROR_ID;
+                    } else {
+                        TypeTable::FVEC_ID[4]
+                    }
+                }
+                (_, AccessType::Index(id, _)) => {
+                    self.errors
+                        .push(CoffinError::TypeCantBeIndexed(self.spans[*id].clone()));
+                    return TypeTable::ERROR_ID;
+                }
+            };
+        }
+        type_id
     }
 }
 
@@ -72,9 +170,16 @@ impl ItemVisitor for TypeResolution<'_, '_> {
 
         for field in params {
             let type_id = self.resolve_type(&field.ttpe);
-            param_types.push(type_id.clone());
+            param_types.push(type_id);
 
-            self.variables.set_variable_type_id(field.name, type_id);
+            // Isn't excatly correct, some parameter have StorageClass::Input.
+            // This is corrected during spirv generation.
+            let pointer_type = self
+                .types
+                .new_type(Type::Pointer(StorageClass::Function, type_id));
+
+            self.variables
+                .set_variable_type_id(field.name, pointer_type);
         }
 
         let return_type = match ret {
@@ -92,14 +197,14 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         type_id
     }
 
-    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
         let type_id = self.resolve_type(&field.ttpe);
-        self.variables.set_variable_type_id(field.name, type_id);
-
         let pointer_type = self
             .types
             .new_type(Type::Pointer(StorageClass::UniformConstant, type_id));
-        self.types.set_type_id(unif_id, pointer_type);
+
+        self.variables
+            .set_variable_type_id(field.name, pointer_type);
 
         TypeTable::VOID_ID
     }
@@ -154,27 +259,24 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         expr: &Expr,
     ) -> Self::Out {
         let expr_id = self.visit_expr(expr);
-        self.variables.set_variable_type_id(name, expr_id);
-
         let pointer_type = self
             .types
             .new_type(Type::Pointer(StorageClass::Function, expr_id));
-        self.types.set_type_id(let_id, pointer_type);
 
+        self.variables.set_variable_type_id(name, pointer_type);
+
+        self.types.set_type_id(let_id, TypeTable::VOID_ID);
         TypeTable::VOID_ID
     }
 
-    fn access(&mut self, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
-        TypeTable::VOID_ID // TEMP
+    fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+        let type_id = self.visit_expr(expr);
+        let type_id = self.access_type(access, type_id, false);
+        self.types.set_type_id(id, type_id);
+        type_id
     }
 
-    fn assign(
-        &mut self,
-        id: Id,
-        left: &Expr,
-        _access: &Vec<AccessType>,
-        right: &Expr,
-    ) -> Self::Out {
+    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
         let expr_type_id = self.visit_expr(right);
 
         let var_type_id = if let Expr::Identifier(name) = left {
@@ -183,15 +285,23 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             self.visit_expr(left)
         };
 
-        let expr_type = &self.types[expr_type_id];
-        let var_type = &self.types[var_type_id];
+        let var_type_id = if let Type::Pointer(_, type_id) = &self.types[var_type_id] {
+            *type_id
+        } else {
+            TypeTable::ERROR_ID
+        };
 
-        if var_type != expr_type && expr_type != &Type::Error && var_type != &Type::Error {
+        let var_type_id = self.access_type(access, var_type_id, true);
+
+        if var_type_id != expr_type_id
+            && expr_type_id != TypeTable::ERROR_ID
+            && var_type_id != TypeTable::ERROR_ID
+        {
             let span = ast_span::get_expr_span(right, self.spans);
             self.errors.push(CoffinError::MismatchedTypes {
                 span,
-                expected: format!("{}", var_type),
-                got: format!("{}", expr_type),
+                expected: format!("{}", self.types[var_type_id]),
+                got: format!("{}", self.types[expr_type_id]),
             });
         }
 
@@ -200,7 +310,13 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        let type_id = self.variables[name];
+        let pointer_id = self.variables[name];
+        let type_id = match self.types[pointer_id] {
+            Type::Pointer(_, type_id) => type_id,
+            Type::Error => TypeTable::ERROR_ID,
+            _ => self.internal_error(String::from("Variable types must be pointers.")),
+        };
+
         self.types.set_type_id(name.id, type_id);
 
         type_id

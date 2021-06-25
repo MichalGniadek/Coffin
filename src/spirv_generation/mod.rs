@@ -295,7 +295,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         Ok(0) // TODO: should return void id
     }
 
-    fn access(&mut self, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
         todo!()
     }
 

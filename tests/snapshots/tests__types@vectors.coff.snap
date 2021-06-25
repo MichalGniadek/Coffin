@@ -1,0 +1,32 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, true)"
+
+---
+unif img@0 : image2d@X
+fun f@X (a@1 : float4@X)  {
+	($a@1: vector).xyzw@X
+	($a@1: vector).xxx@X
+	($a@1: vector).yx@X
+	($a@1: vector).w@X
+	($a@1: vector)[#3: int]
+	($a@1: vector)[#0: int]
+	(($img@0: error)[#123: int] = $a@1: vector): void
+	($img@0: image)[#123: int]
+	($a@1: vector).xyaw@X
+	($a@1: vector).b@X
+	($a@1: vector)[#4: int]
+	($a@1: vector)[$a@X: error]
+	($a@1: vector).x@X.x@X
+	(($a@1: error).x@X = ($a@1: vector).y@X): void
+	($img@0: image).asd@X
+}: error
+
+===
+Images are write only. [133..138]
+Incorrect vector fields. [148..152]
+Incorrect vector fields. [160..161]
+Index isn't an int. [179..180]
+Swizzle isn't at the end. [191..192]
+Swizzle can't be used in an assignment. [204..205]
+Type doesn't have fields. [223..226]

@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "debug_print::visit(&ast, true, false, Some(&vars), None)"
+expression: "test_util(path, false, true, false)"
 
 ---
 fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
@@ -30,6 +30,3 @@ fun fn2@X ()  {
 
 ===
 Undeclared variable. [357..369]
-Undeclared type. [14..15]
-Undeclared type. [23..24]
-Undeclared type. [246..247]

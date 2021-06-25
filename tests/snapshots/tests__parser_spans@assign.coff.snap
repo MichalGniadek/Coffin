@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "debug_print::visit(&ast, true, true, None, None)"
+expression: "test_util(path, true, false, false)"
 
 ---
 [0..3] fun [4..5] a [5..6] ()  [7..37] {
@@ -10,4 +10,3 @@ expression: "debug_print::visit(&ast, true, true, None, None)"
 
 ===
 Expression not assignable. [27..28]
-Undeclared variable. [14..15]

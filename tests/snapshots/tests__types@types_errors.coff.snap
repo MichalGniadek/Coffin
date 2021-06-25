@@ -1,14 +1,14 @@
 ---
 source: tests/tests.rs
-expression: "debug_print::visit(&ast, true, false, None, Some(&types))"
+expression: "test_util(path, false, false, true)"
 
 ---
-fun a (arg1 : NonExistant, arg2 : int)  {
-	($arg2: error = {
+fun a@X (arg1@0 : NonExistant@X, arg2@1 : int@X)  {
+	($arg2@1: error = {
 		(#2: int + #2: int): int
 	}: int): void
-	($arg2: error = {
-		($arg2: error = #3: int): void
+	($arg2@1: error = {
+		($arg2@1: error = #3: int): void
 	}: void): void
 	(#3: int + {
 		

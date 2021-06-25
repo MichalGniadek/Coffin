@@ -1,12 +1,12 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types), Some(errors))"
+expression: "test_util(path, false, false, true)"
 
 ---
-fun a () -> void {
+fun a@X () -> void@X {
 	
 }: void
-fun b () -> Undeclared {
+fun b@X () -> Undeclared@X {
 	
 }: void
 

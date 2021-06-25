@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, None, Some(errors))"
+expression: "test_util(path, false, false, false)"
 
 ---
 fun asd (parm1 : Tt1, param2 : Tt2) -> void {
@@ -8,5 +8,3 @@ fun asd (parm1 : Tt1, param2 : Tt2) -> void {
 }
 
 ===
-Undeclared type. [15..18]
-Undeclared type. [28..31]

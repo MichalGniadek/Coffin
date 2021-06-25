@@ -1,16 +1,16 @@
 ---
 source: tests/tests.rs
-expression: "debug_print::visit(&ast, true, false, None, Some(&types))"
+expression: "test_util(path, false, false, true)"
 
 ---
-fun a ()  {
-	(let a = #3: int): pointer
-	(let b = ($a: int + #5: int): int): pointer
-	(let c = {
-		($a: int + $b: int): int
+fun a@X ()  {
+	(let a@0 = #3: int): pointer
+	(let b@1 = ($a@0: int + #5: int): int): pointer
+	(let c@2 = {
+		($a@0: int + $b@1: int): int
 	}: int): pointer
-	(let d = {
-		($a: error = $b: int): void
+	(let d@3 = {
+		($a@0: error = $b@1: int): void
 	}: void): pointer
 }: void
 

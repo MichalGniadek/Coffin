@@ -1,11 +1,11 @@
 ---
 source: tests/tests.rs
-expression: "debug_print::visit(&ast, true, false, None, Some(&types))"
+expression: "test_util(path, false, false, true)"
 
 ---
-fun asd (a : int, b : int)  {
-	($a: error = #3: int): void
-	($b: error = #5: int): void
+fun asd@X (a@0 : int@X, b@1 : int@X)  {
+	($a@0: error = #3: int): void
+	($b@1: error = #5: int): void
 }: void
 
 ===

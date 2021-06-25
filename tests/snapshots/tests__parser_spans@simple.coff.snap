@@ -1,6 +1,6 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Some(errors))"
+expression: "test_util(path, true, false, false)"
 
 ---
 [0..3] fun [4..7] asd [7..31] ([8..13] parm1 [13..14] : [15..18] Tt1, [20..26] param2 [26..27] : [28..31] Tt2) [33..35] -> [36..40] void [41..99] {
@@ -14,5 +14,3 @@ expression: "DebugPrint::visit(&ast, Some(&rodeo), Some(&spans), None, None, Som
 
 ===
 Expected prefix token. [86..87]
-Undeclared type. [15..18]
-Undeclared type. [28..31]

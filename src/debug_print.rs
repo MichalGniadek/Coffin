@@ -114,13 +114,13 @@ impl DebugPrint<'_, '_, '_> {
         }
     }
 
-    fn print_access(&self, access: &Vec<AccessType>) -> String {
+    fn print_access(&mut self, access: &Vec<AccessType>) -> String {
         access
             .into_iter()
             .map(|a| match a {
                 AccessType::Dot(id, name) => format!(".{}{}", self.span(*id), self.name(*name)),
-                AccessType::Index(brackets, id, i) => {
-                    format!("{}[{}{}]", self.span(*brackets), self.span(*id), i)
+                AccessType::Index(brackets, expr) => {
+                    format!("{}[{}]", self.span(*brackets), self.visit_expr(expr))
                 }
             })
             .collect()

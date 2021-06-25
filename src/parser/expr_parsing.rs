@@ -1,6 +1,6 @@
 use super::Parser;
 use crate::{
-    ast::{BinOpKind, Expr, Name},
+    ast::{AccessType, BinOpKind, Expr, Name},
     ast_span,
     error::ParserErrorKind,
     lexer::Token,
@@ -122,7 +122,7 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_infix(&mut self, mut tree: Expr, min_binding_power: u8) -> ExprResult {
+    fn parse_infix(&mut self, mut left: Expr, min_binding_power: u8) -> ExprResult {
         // Associativity
         const LEFT: u8 = 0;
         const RIGHT: u8 = 1;
@@ -130,8 +130,10 @@ impl Parser<'_> {
         enum InfixType {
             Binary(BinOpKind),
             Assign,
+            DotAccess,
+            IndexAccess,
         }
-        use InfixType::{Assign, Binary};
+        use InfixType::{Assign, Binary, DotAccess, IndexAccess};
 
         loop {
             let (binding_power, assoc, kind) = match self.curr_token {
@@ -142,45 +144,95 @@ impl Parser<'_> {
                 Token::Slash => (20, LEFT, Binary(BinOpKind::Div)),
                 Token::Percent => (20, LEFT, Binary(BinOpKind::Rem)),
                 Token::DoubleStar => (30, RIGHT, Binary(BinOpKind::Pow)),
-                Token::LeftParen | Token::LeftBracket | Token::Dot => {
-                    todo!("Function call, indexing, dot operators not implemented.")
+                Token::Dot => (200, LEFT, DotAccess),
+                Token::LeftBracket => (200, LEFT, IndexAccess),
+                Token::LeftParen => {
+                    todo!("Function call operator not implemented.")
                 }
                 _ => break,
             };
 
             if binding_power + assoc > min_binding_power {
-                let id = self.consume();
-                let (expr, mut is_panic) = self.parse_expr(Some(binding_power)).destruct();
+                let (id, (right, is_panic)) = if let IndexAccess = kind {
+                    let id = self.consume();
+                    let right = self.parse_expr(None).destruct();
+                    self.spans[id].end = self.skip().end;
+                    (id, right)
+                } else {
+                    (
+                        self.consume(),
+                        self.parse_expr(Some(binding_power)).destruct(),
+                    )
+                };
 
-                tree = match (kind, &tree) {
-                    (Binary(kind), _) => Expr::Binary(id, kind, Box::new(tree), Box::new(expr)),
-                    (Assign, Expr::Identifier(_)) => {
-                        Expr::Assign(id, Box::new(tree), vec![], Box::new(expr))
+                left = match (left, kind, right) {
+                    // Binary
+                    (left, Binary(kind), right) => {
+                        Expr::Binary(id, kind, Box::new(left), Box::new(right))
                     }
-                    (Assign, _) => {
-                        is_panic = true;
-                        let err_span = ast_span::get_expr_span(&tree, &self.spans);
-                        let expr_span = ast_span::get_expr_span(&expr, &self.spans);
-                        self.spans[id].start = err_span.start;
-                        self.spans[id].end = expr_span.end;
 
-                        self.err_consume(
+                    // Assignment
+                    (Expr::Identifier(n), Assign, right) => {
+                        Expr::Assign(id, Box::new(Expr::Identifier(n)), vec![], Box::new(right))
+                    }
+                    (Expr::Access(expr, access), Assign, right) => {
+                        Expr::Assign(id, expr, access, Box::new(right))
+                    }
+                    (left, Assign, right) => {
+                        let left_span = ast_span::get_expr_span(&left, &self.spans);
+                        let right_span = ast_span::get_expr_span(&right, &self.spans);
+                        self.spans[id].start = left_span.start;
+                        self.spans[id].end = right_span.end;
+
+                        return self.err_consume(
                             id,
                             ParserErrorKind::ExpressionNotAssignable,
-                            err_span,
+                            left_span,
                             &Self::EXPR_SYNC,
-                        )
+                        );
+                    }
+
+                    // Dot access
+                    (Expr::Access(expr, mut access), DotAccess, Expr::Identifier(member)) => {
+                        access.push(AccessType::Dot(id, member));
+                        Expr::Access(expr, access)
+                    }
+                    (left, DotAccess, Expr::Identifier(member)) => {
+                        Expr::Access(Box::new(left), vec![AccessType::Dot(id, member)])
+                    }
+                    (left, DotAccess, right) => {
+                        let left_span = ast_span::get_expr_span(&left, &self.spans);
+                        let right_span = ast_span::get_expr_span(&right, &self.spans);
+
+                        self.spans[id].start = left_span.start;
+                        self.spans[id].end = right_span.end;
+
+                        return self.err_consume(
+                            id,
+                            ParserErrorKind::ExpectedIdentifierAfterDot,
+                            right_span,
+                            &Self::EXPR_SYNC,
+                        );
+                    }
+
+                    // Index access
+                    (Expr::Access(expr, mut access), IndexAccess, right) => {
+                        access.push(AccessType::Index(id, Box::new(right)));
+                        Expr::Access(expr, access)
+                    }
+                    (left, IndexAccess, right) => {
+                        Expr::Access(Box::new(left), vec![AccessType::Index(id, Box::new(right))])
                     }
                 };
 
                 if is_panic {
-                    return PanicMode(tree);
+                    return PanicMode(left);
                 }
             } else {
                 break;
             }
         }
 
-        Correct(tree)
+        Correct(left)
     }
 }

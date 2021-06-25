@@ -1,0 +1,26 @@
+---
+source: tests/tests.rs
+expression: "debug_print::visit(&ast, true, false, None, None)"
+
+---
+fun f ()  {
+	(let a = #123)
+	$a.mem
+	$a[#123]
+	$a.mem[#123].b
+	$a[(#3 + #2)]
+	Err
+}
+fun g ()  {
+	(let a = #0)
+	(let b = #0)
+	($a.m + $b.m)
+	($a[#1] - $b[#1])
+	($a.m[#1] * $b[#1].m)
+}
+
+===
+Expected identifier after the dot operator. [88..91]
+Wrong types for '+', void [144..147] and void [150..153].
+Wrong types for '-', void [159..163] and void [166..170].
+Wrong types for '*', void [176..182] and void [185..191].

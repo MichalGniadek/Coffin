@@ -110,6 +110,8 @@ pub enum ParserErrorKind {
     ExpressionNotAssignable,
     #[error("Expected an item.")]
     ExpectedItem,
+    #[error("Expected identifier after the dot operator.")]
+    ExpectedIdentifierAfterDot
 }
 
 impl ParserErrorKind {

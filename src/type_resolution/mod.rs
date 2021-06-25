@@ -165,7 +165,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     }
 
     fn access(&mut self, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
-        todo!()
+        TypeTable::VOID_ID // TEMP
     }
 
     fn assign(

@@ -72,7 +72,7 @@ impl ExprVisitor for SpanGetter<'_> {
         if let Some(a) = access.last() {
             span.end = match a {
                 AccessType::Dot(_, n) => self.0[n.id].end,
-                AccessType::Index(id, _, _) => self.0[*id].end,
+                AccessType::Index(id, _) => self.0[*id].end,
             }
         }
         span

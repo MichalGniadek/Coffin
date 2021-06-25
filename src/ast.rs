@@ -113,10 +113,10 @@ impl Display for BinOpKind {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum AccessType {
     Dot(Id, Name),
-    Index(Id, Id, i32),
+    Index(Id, Box<Expr>),
 }
 
 #[derive(Debug, Clone)]

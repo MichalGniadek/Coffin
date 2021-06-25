@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name},
+    ast::{AccessType, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name},
     parser::spans_table::SpanTable,
 };
 use logos::Span;
@@ -67,8 +67,25 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[let_id].start..self.visit_expr(expr).end
     }
 
-    fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
-        self.0[name.id].start..self.visit_expr(right).end
+    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+        let mut span = self.visit_expr(expr);
+        if let Some(a) = access.last() {
+            span.end = match a {
+                AccessType::Dot(_, n) => self.0[n.id].end,
+                AccessType::Index(id, _, _) => self.0[*id].end,
+            }
+        }
+        span
+    }
+
+    fn assign(
+        &mut self,
+        _id: Id,
+        left: &Expr,
+        _access: &Vec<AccessType>,
+        right: &Expr,
+    ) -> Self::Out {
+        self.visit_expr(left).start..self.visit_expr(right).end
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {

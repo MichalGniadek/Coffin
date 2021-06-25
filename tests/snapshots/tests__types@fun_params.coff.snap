@@ -1,11 +1,11 @@
 ---
 source: tests/tests.rs
-expression: "DebugPrint::visit(&ast, Some(&rodeo), None, None, Some(&types), Some(errors))"
+expression: "debug_print::visit(&ast, true, false, None, Some(&types))"
 
 ---
 fun asd (a : int, b : int)  {
-	(a = #3: int): void
-	(b = #5: int): void
+	($a: error = #3: int): void
+	($b: error = #5: int): void
 }: void
 
 ===

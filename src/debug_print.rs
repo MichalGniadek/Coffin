@@ -1,10 +1,11 @@
 use crate::{
-    ast::{self, Ast, Attr, Attrs, ExprVisitor, Field, ItemVisitor},
+    ast::{
+        AccessType, Ast, Attr, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name,
+    },
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::TypeTable,
 };
-use ast::{BinOpKind, Expr, Id, Name};
 use lasso::{RodeoReader, Spur};
 use std::iter;
 
@@ -112,6 +113,18 @@ impl DebugPrint<'_, '_, '_> {
             Attrs::Error(id) => format!("#[{}Err]", self.span(*id)),
         }
     }
+
+    fn print_access(&self, access: &Vec<AccessType>) -> String {
+        access
+            .into_iter()
+            .map(|a| match a {
+                AccessType::Dot(id, name) => format!(".{}{}", self.span(*id), self.name(*name)),
+                AccessType::Index(brackets, id, i) => {
+                    format!("{}[{}{}]", self.span(*brackets), self.span(*id), i)
+                }
+            })
+            .collect()
+    }
 }
 
 impl ItemVisitor for DebugPrint<'_, '_, '_> {
@@ -202,10 +215,15 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
+    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+        format!("{}{}", self.visit_expr(expr), self.print_access(access))
+    }
+
+    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
         format!(
-            "({} {}= {}){}",
-            self.name(name),
+            "({} {}{}= {}){}",
+            self.visit_expr(left),
+            self.print_access(access),
             self.span(id),
             self.visit_expr(right),
             self.ttpe(id),

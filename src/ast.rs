@@ -113,6 +113,12 @@ impl Display for BinOpKind {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum AccessType {
+    Dot(Id, Name),
+    Index(Id, Id, i32),
+}
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Binary(Id, BinOpKind, Box<Expr>, Box<Expr>),
@@ -123,7 +129,8 @@ pub enum Expr {
         eq_id: Id,
         expr: Box<Expr>,
     },
-    Assign(Id, Name, Box<Expr>),
+    Access(Box<Expr>, Vec<AccessType>),
+    Assign(Id, Box<Expr>, Vec<AccessType>, Box<Expr>),
     Identifier(Name),
     Float(Id, f32),
     Int(Id, i32),
@@ -192,7 +199,8 @@ pub trait ExprVisitor {
                 eq_id,
                 expr,
             } => self.let_declaration(*let_id, *mut_id, *name, *eq_id, expr),
-            Expr::Assign(id, name, right) => self.assign(*id, *name, right),
+            Expr::Access(expr, access) => self.access(expr, access),
+            Expr::Assign(id, left, access, right) => self.assign(*id, left, access, right),
             Expr::Identifier(name) => self.identifier(*name),
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
@@ -210,7 +218,8 @@ pub trait ExprVisitor {
         eq_id: Id,
         expr: &Expr,
     ) -> Self::Out;
-    fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out;
+    fn access(&mut self, expr: &Expr, access: &Vec<AccessType>) -> Self::Out;
+    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out;
     fn identifier(&mut self, name: Name) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;

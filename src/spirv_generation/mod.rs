@@ -2,7 +2,9 @@ mod variable_spirv_ids;
 
 use self::variable_spirv_ids::VariableSpirvIds;
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name},
+    ast::{
+        AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name,
+    },
     error::CoffinError,
     lexer::Token,
     name_resolution::VariableTable,
@@ -293,10 +295,30 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         Ok(0) // TODO: should return void id
     }
 
-    fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
-        let var = self.variables[name];
-        let id = self.visit_expr(right)?;
-        self.code.store(var, id, None, &[])?;
+    fn access(&mut self, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
+        todo!()
+    }
+
+    fn assign(
+        &mut self,
+        _id: Id,
+        left: &Expr,
+        access: &Vec<AccessType>,
+        right: &Expr,
+    ) -> Self::Out {
+        let var = if let Expr::Identifier(name) = left {
+            self.variables[*name]
+        } else {
+            self.visit_expr(left)?
+        };
+
+        let right = self.visit_expr(right)?;
+
+        if access.len() == 0 {
+            self.code.store(var, right, None, &[])?;
+        } else {
+            todo!("OpAccessChain")
+        }
 
         Ok(0) // TODO: should return void id
     }

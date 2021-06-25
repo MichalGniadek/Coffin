@@ -10,7 +10,7 @@ fun a ()  {
 		($a: int + $b: int): int
 	}: int): pointer
 	(let d = {
-		(a = $b: int): void
+		($a: error = $b: int): void
 	}: void): pointer
 }: void
 

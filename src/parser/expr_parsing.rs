@@ -128,20 +128,20 @@ impl Parser<'_> {
         const RIGHT: u8 = 1;
 
         enum InfixType {
-            Standard(BinOpKind),
+            Binary(BinOpKind),
             Assign,
         }
-        use InfixType::{Assign, Standard};
+        use InfixType::{Assign, Binary};
 
         loop {
             let (binding_power, assoc, kind) = match self.curr_token {
                 Token::Equal => (5, RIGHT, Assign),
-                Token::Plus => (10, LEFT, Standard(BinOpKind::Add)),
-                Token::Minus => (10, LEFT, Standard(BinOpKind::Sub)),
-                Token::Star => (20, LEFT, Standard(BinOpKind::Mul)),
-                Token::Slash => (20, LEFT, Standard(BinOpKind::Div)),
-                Token::Percent => (20, LEFT, Standard(BinOpKind::Rem)),
-                Token::DoubleStar => (30, RIGHT, Standard(BinOpKind::Pow)),
+                Token::Plus => (10, LEFT, Binary(BinOpKind::Add)),
+                Token::Minus => (10, LEFT, Binary(BinOpKind::Sub)),
+                Token::Star => (20, LEFT, Binary(BinOpKind::Mul)),
+                Token::Slash => (20, LEFT, Binary(BinOpKind::Div)),
+                Token::Percent => (20, LEFT, Binary(BinOpKind::Rem)),
+                Token::DoubleStar => (30, RIGHT, Binary(BinOpKind::Pow)),
                 Token::LeftParen | Token::LeftBracket | Token::Dot => {
                     todo!("Function call, indexing, dot operators not implemented.")
                 }
@@ -152,25 +152,25 @@ impl Parser<'_> {
                 let id = self.consume();
                 let (expr, mut is_panic) = self.parse_expr(Some(binding_power)).destruct();
 
-                tree = if let Standard(bin_op_kind) = kind {
-                    Expr::Binary(id, bin_op_kind, Box::new(tree), Box::new(expr))
-                } else if let Expr::Identifier(n) = tree {
-                    // It's an assignment
-                    Expr::Assign(id, n, Box::new(expr))
-                } else {
-                    // Assignment if tree isn't an identifier
-                    is_panic = true;
-                    let err_span = ast_span::get_expr_span(&tree, &self.spans);
-                    let expr_span = ast_span::get_expr_span(&expr, &self.spans);
-                    self.spans[id].start = err_span.start;
-                    self.spans[id].end = expr_span.end;
+                tree = match (kind, &tree) {
+                    (Binary(kind), _) => Expr::Binary(id, kind, Box::new(tree), Box::new(expr)),
+                    (Assign, Expr::Identifier(_)) => {
+                        Expr::Assign(id, Box::new(tree), vec![], Box::new(expr))
+                    }
+                    (Assign, _) => {
+                        is_panic = true;
+                        let err_span = ast_span::get_expr_span(&tree, &self.spans);
+                        let expr_span = ast_span::get_expr_span(&expr, &self.spans);
+                        self.spans[id].start = err_span.start;
+                        self.spans[id].end = expr_span.end;
 
-                    self.err_consume(
-                        id,
-                        ParserErrorKind::ExpressionNotAssignable,
-                        err_span,
-                        &Self::EXPR_SYNC,
-                    )
+                        self.err_consume(
+                            id,
+                            ParserErrorKind::ExpressionNotAssignable,
+                            err_span,
+                            &Self::EXPR_SYNC,
+                        )
+                    }
                 };
 
                 if is_panic {

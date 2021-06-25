@@ -2,13 +2,14 @@ pub mod types;
 
 use self::types::{Type, TypeId, TypeTable, VariableTypes};
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
+    ast::{self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     ast_span,
     error::CoffinError,
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::FunType,
 };
+use ast::AccessType;
 use lasso::RodeoReader;
 use rspirv::spirv::StorageClass;
 
@@ -163,10 +164,26 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         TypeTable::VOID_ID
     }
 
-    fn assign(&mut self, id: Id, name: Name, right: &Expr) -> Self::Out {
+    fn access(&mut self, _expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
+        todo!()
+    }
+
+    fn assign(
+        &mut self,
+        id: Id,
+        left: &Expr,
+        _access: &Vec<AccessType>,
+        right: &Expr,
+    ) -> Self::Out {
         let expr_type_id = self.visit_expr(right);
+
+        let var_type_id = if let Expr::Identifier(name) = left {
+            self.variables[*name]
+        } else {
+            self.visit_expr(left)
+        };
+
         let expr_type = &self.types[expr_type_id];
-        let var_type_id = self.variables[name];
         let var_type = &self.types[var_type_id];
 
         if var_type != expr_type && expr_type != &Type::Error && var_type != &Type::Error {

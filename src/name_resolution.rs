@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
+    ast::{AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     error::CoffinError,
     parser::spans_table::SpanTable,
 };
@@ -120,17 +120,18 @@ impl ExprVisitor for NameResolution<'_> {
         self.new_variable(name);
     }
 
-    fn assign(&mut self, _id: Id, name: Name, right: &Expr) -> Self::Out {
-        let mut scopes = self.scopes.iter().rev();
-        let found = scopes.find_map(|scope| scope.get(&name.spur));
+    fn access(&mut self, expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
+        self.visit_expr(expr)
+    }
 
-        match found {
-            Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self
-                .errors
-                .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone())),
-        }
-
+    fn assign(
+        &mut self,
+        _id: Id,
+        left: &Expr,
+        _access: &Vec<AccessType>,
+        right: &Expr,
+    ) -> Self::Out {
+        self.visit_expr(left);
         self.visit_expr(right);
     }
 
@@ -145,8 +146,10 @@ impl ExprVisitor for NameResolution<'_> {
                 .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone())),
         }
     }
+
     fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
     fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
+
     fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
         self.scopes.push(HashMap::new());
         for e in exprs {

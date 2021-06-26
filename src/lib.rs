@@ -11,13 +11,35 @@ pub mod type_resolution;
 
 use assembler::{Assembler, DisassembleOptions};
 use error::CoffinError;
+use rspirv::binary::Assemble;
 use spirv_tools::{
     assembler,
     val::{self, Validator},
 };
-use std::{fs, path::PathBuf};
+use std::{fs, path::Path};
 
-pub fn write_spirv_binary(spirv: &Vec<u32>, path: &PathBuf) -> Result<(), CoffinError> {
+pub use spirv_tools::error::Error as ValidatorError;
+
+pub fn compile_file(path: &Path) -> Result<Vec<u32>, Vec<CoffinError>> {
+    let src = match fs::read_to_string(path) {
+        Ok(src) => src,
+        Err(err) => {
+            return Err(vec![CoffinError::from(err)]);
+        }
+    };
+
+    let lexer = lexer::lex(&src);
+    let mut ast = parser::parse(lexer);
+    let variables = name_resolution::visit(&mut ast);
+    let types = type_resolution::visit(&mut ast, &variables);
+
+    match spirv_generation::visit(&mut ast, &variables, &types) {
+        Ok(module) => Ok(module.assemble()),
+        Err(_) => Err(ast.errors),
+    }
+}
+
+pub fn write_spirv_binary(spirv: &[u32], path: &Path) -> Result<(), CoffinError> {
     let (head, body, tail) = unsafe { spirv.align_to::<u8>() };
     // Make sure alignment is correct.
     assert!(head.is_empty() && tail.is_empty());
@@ -25,7 +47,7 @@ pub fn write_spirv_binary(spirv: &Vec<u32>, path: &PathBuf) -> Result<(), Coffin
     Ok(())
 }
 
-pub fn write_spirv_diss(spirv: &Vec<u32>, path: &PathBuf) -> Result<(), CoffinError> {
+pub fn write_spirv_diss(spirv: &[u32], path: &Path) -> Result<(), CoffinError> {
     let ass = assembler::create(Some(spirv_tools::TargetEnv::Universal_1_5));
     let diss = ass
         .disassemble(spirv, DisassembleOptions::default())
@@ -34,11 +56,7 @@ pub fn write_spirv_diss(spirv: &Vec<u32>, path: &PathBuf) -> Result<(), CoffinEr
     Ok(())
 }
 
-pub fn validate_spirv(spirv: &Vec<u32>) -> Result<(), CoffinError> {
+pub fn validate_spirv(spirv: &[u32]) -> Result<(), ValidatorError> {
     let val = val::create(None);
-    match val.validate(spirv, Some(val::ValidatorOptions::default())) {
-        Ok(_) => {}
-        Err(e) => println!("{}", e),
-    }
-    Ok(())
+    val.validate(spirv, Some(val::ValidatorOptions::default()))
 }

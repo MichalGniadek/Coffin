@@ -8,8 +8,9 @@ use codespan_reporting::{
 };
 use coffin2::{
     error::CoffinError, lexer, name_resolution, parser, spirv_generation, type_resolution,
+    validate_spirv,
 };
-use rspirv::binary::Disassemble;
+use rspirv::binary::{Assemble, Disassemble};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 
@@ -50,7 +51,7 @@ fn main() {
     let variables = name_resolution::visit(&mut ast);
     let types = type_resolution::visit(&mut ast, &variables);
 
-    if !ast.errors.is_empty() {
+    let module = if !ast.errors.is_empty() {
         let file = SimpleFile::new(
             opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
             src,
@@ -58,7 +59,7 @@ fn main() {
         exit_with_errors(&file, &ast.errors);
     } else {
         match spirv_generation::visit(&mut ast, &variables, &types) {
-            Ok(module) => println!("{}", module.disassemble()),
+            Ok(module) => module,
             Err(_) => {
                 let file = SimpleFile::new(
                     opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
@@ -66,6 +67,20 @@ fn main() {
                 );
                 exit_with_errors(&file, &ast.errors);
             }
+        }
+    };
+
+    if opt.disassemble {
+        println!("{}", module.disassemble());
+    }
+
+    let code = module.assemble();
+    if opt.validate {
+        if let Err(err) = validate_spirv(&code) {
+            println!(
+                "Internal compiler validator error, this is a bug please report it.\n{}",
+                err
+            );
         }
     }
 }

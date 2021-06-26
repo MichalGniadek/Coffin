@@ -182,11 +182,6 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
             fun_type_spirv_id,
         )?;
 
-        self.code.begin_block(None)?;
-        self.visit_expr(body)?;
-        self.code.ret()?;
-        self.code.end_function()?;
-
         let compute = attrs.get_attr(self.rodeo.get("compute"));
         if compute.len() > 1 {
             todo!("More than one compute attribute")
@@ -198,7 +193,18 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
             } else if params.len() > 1 {
                 todo!("Compute shader function must have one parameter of type Id");
             } else {
-                let id_param = self.variables[params[0].name];
+                // Next lines are very hacky. Less hacky solution would be to store the type in colon id in a field.
+                // Probably still to hacky. Best solution is to make it possible to get types of variables in spirv gen.
+                let spirv_type_id = self.type_id_to_spirv_id(TypeTable::ID_ID);
+                let pointer_type_id =
+                    self.code
+                        .type_pointer(None, spirv::StorageClass::Input, spirv_type_id);
+                let id_param =
+                    self.code
+                        .variable(pointer_type_id, None, spirv::StorageClass::Input, None);
+
+                self.variables
+                    .set_variable_spirv_id(params[0].name, id_param);
 
                 self.code.decorate(
                     id_param,
@@ -232,6 +238,11 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                 _ => todo!("Compute arguments must have 3 ints seperated by commas."),
             };
         }
+
+        self.code.begin_block(None)?;
+        self.visit_expr(body)?;
+        self.code.ret()?;
+        self.code.end_function()?;
 
         Ok(fun_spirv_id)
     }

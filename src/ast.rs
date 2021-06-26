@@ -138,6 +138,28 @@ pub enum Expr {
     Error(Id),
 }
 
+impl Expr {
+    pub fn get_id(&self) -> Id {
+        match self {
+            Expr::Binary(id, _, _, _) => *id,
+            Expr::Let {
+                let_id,
+                mut_id: _,
+                name: _,
+                eq_id: _,
+                expr: _,
+            } => *let_id,
+            Expr::Access(id, _, _) => *id,
+            Expr::Assign(id, _, _, _) => *id,
+            Expr::Identifier(name) => name.id,
+            Expr::Float(id, _) => *id,
+            Expr::Int(id, _) => *id,
+            Expr::Block(id, _) => *id,
+            Expr::Error(id) => *id,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Item {
     Fun {

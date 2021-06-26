@@ -120,18 +120,32 @@ impl ExprVisitor for NameResolution<'_> {
         self.new_variable(name);
     }
 
-    fn access(&mut self, _id: Id, expr: &Expr, _access: &Vec<AccessType>) -> Self::Out {
-        self.visit_expr(expr)
+    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+        self.visit_expr(expr);
+        for a in access {
+            if let AccessType::Index(_, expr) = a {
+                self.scopes.push(HashMap::new());
+                self.visit_expr(expr);
+                self.scopes.pop();
+            }
+        }
     }
 
     fn assign(
         &mut self,
         _id: Id,
         left: &Expr,
-        _access: &Vec<AccessType>,
+        access: &Vec<AccessType>,
         right: &Expr,
     ) -> Self::Out {
         self.visit_expr(left);
+        for a in access {
+            if let AccessType::Index(_, expr) = a {
+                self.scopes.push(HashMap::new());
+                self.visit_expr(expr);
+                self.scopes.pop();
+            }
+        }
         self.visit_expr(right);
     }
 

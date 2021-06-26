@@ -68,86 +68,78 @@ impl TypeResolution<'_, '_> {
         TypeTable::ERROR_ID
     }
 
-    fn access_type(
-        &mut self,
-        access: &Vec<AccessType>,
-        mut type_id: TypeId,
-        assign: bool,
-    ) -> TypeId {
+    fn access_type(&mut self, access: &Vec<AccessType>, mut type_id: TypeId) -> TypeId {
         for (i, a) in access.iter().enumerate() {
-            type_id = match (&self.types[type_id], a) {
-                (Type::Vector(members, vec_type), AccessType::Dot(_, member)) => {
-                    if i != access.len() - 1 {
-                        self.errors.push(CoffinError::SwizzleNotAtTheEnd(
-                            self.spans[member.id].clone(),
-                        ));
-                        return TypeTable::ERROR_ID;
-                    } else if assign {
-                        self.errors.push(CoffinError::SwizzleAssignment(
-                            self.spans[member.id].clone(),
-                        ));
-                        return TypeTable::ERROR_ID;
-                    }
+            match a {
+                AccessType::Dot(id, member) => {
+                    match &self.types[type_id] {
+                        Type::Vector(members, vec_type) => {
+                            if i != access.len() - 1 {
+                                self.errors.push(CoffinError::SwizzleNotAtTheEnd(
+                                    self.spans[member.id].clone(),
+                                ));
+                                return TypeTable::ERROR_ID;
+                            }
 
-                    let member_str = self.rodeo.resolve(&member.spur);
+                            let member_str = self.rodeo.resolve(&member.spur);
 
-                    if member_str.chars().all(|c| members.contains(&c)) {
-                        if vec_type == &TypeTable::INT_ID {
-                            TypeTable::IVEC_ID[member_str.chars().count()]
-                        } else if vec_type == &TypeTable::FLOAT_ID {
-                            TypeTable::FVEC_ID[member_str.chars().count()]
-                        } else {
-                            todo!()
+                            if member_str.chars().all(|c| members.contains(&c)) {
+                                if vec_type == &TypeTable::INT_ID {
+                                    type_id = TypeTable::IVEC_ID[member_str.chars().count()]
+                                } else if vec_type == &TypeTable::FLOAT_ID {
+                                    type_id = TypeTable::FVEC_ID[member_str.chars().count()]
+                                } else {
+                                    todo!()
+                                }
+                            } else {
+                                self.errors.push(CoffinError::IncorrectVectorFields(
+                                    self.spans[member.id].clone(),
+                                ));
+                                return TypeTable::ERROR_ID;
+                            }
                         }
-                    } else {
-                        self.errors.push(CoffinError::IncorrectVectorFields(
-                            self.spans[member.id].clone(),
-                        ));
-                        return TypeTable::ERROR_ID;
-                    }
-                }
-                (_, AccessType::Dot(_, member)) => {
-                    self.errors.push(CoffinError::TypeDoesntHaveFields(
-                        self.spans[member.id].clone(),
-                    ));
-                    return TypeTable::ERROR_ID;
-                }
-                (&Type::Vector(_, vec_type), AccessType::Index(_, expr)) => {
-                    if self.visit_expr(expr) == TypeTable::INT_ID {
-                        vec_type
-                    } else {
-                        self.errors
-                            .push(CoffinError::IndexIsntAnInt(ast_span::get_expr_span(
-                                expr,
-                                &self.spans,
-                            )));
-                        return TypeTable::ERROR_ID;
-                    }
-                }
-                (Type::Image(), AccessType::Index(id, expr)) => {
-                    if self.visit_expr(expr) != TypeTable::INT_ID {
-                        self.errors
-                            .push(CoffinError::IndexIsntAnInt(ast_span::get_expr_span(
-                                expr,
-                                &self.spans,
-                            )));
-                        return TypeTable::ERROR_ID;
-                    };
 
-                    if !assign {
-                        self.errors
-                            .push(CoffinError::ImageIsWriteonly(self.spans[*id].clone()));
-                        return TypeTable::ERROR_ID;
-                    } else {
-                        TypeTable::FVEC_ID[4]
-                    }
+                        _ => {
+                            self.errors.push(CoffinError::TypeDoesntHaveFields(
+                                self.spans[member.id].clone(),
+                            ));
+                            return TypeTable::ERROR_ID;
+                        }
+                    };
+                    self.types.set_type_id(*id, type_id);
                 }
-                (_, AccessType::Index(id, _)) => {
-                    self.errors
-                        .push(CoffinError::TypeCantBeIndexed(self.spans[*id].clone()));
-                    return TypeTable::ERROR_ID;
+                AccessType::Index(id, expr) => {
+                    match &self.types[type_id] {
+                        &Type::Vector(_, vec_type) => {
+                            if self.visit_expr(expr) == TypeTable::INT_ID {
+                                type_id = vec_type;
+                            } else {
+                                self.errors.push(CoffinError::IndexIsntAnInt(
+                                    ast_span::get_expr_span(expr, &self.spans),
+                                ));
+                                return TypeTable::ERROR_ID;
+                            }
+                        }
+                        Type::Image() => {
+                            if self.visit_expr(expr) != TypeTable::IVEC_ID[2] {
+                                // TODO: Incorrect error
+                                self.errors.push(CoffinError::IndexIsntAnInt(
+                                    ast_span::get_expr_span(expr, &self.spans),
+                                ));
+                                return TypeTable::ERROR_ID;
+                            } else {
+                                type_id = TypeTable::FVEC_ID[4];
+                            }
+                        }
+                        _ => {
+                            self.errors
+                                .push(CoffinError::TypeCantBeIndexed(self.spans[*id].clone()));
+                            return TypeTable::ERROR_ID;
+                        }
+                    };
+                    self.types.set_type_id(*id, type_id);
                 }
-            };
+            }
         }
         type_id
     }
@@ -271,7 +263,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
     fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
         let type_id = self.visit_expr(expr);
-        let type_id = self.access_type(access, type_id, false);
+        let type_id = self.access_type(access, type_id);
         self.types.set_type_id(id, type_id);
         type_id
     }
@@ -291,7 +283,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             TypeTable::ERROR_ID
         };
 
-        let var_type_id = self.access_type(access, var_type_id, true);
+        let var_type_id = self.access_type(access, var_type_id);
 
         if var_type_id != expr_type_id
             && expr_type_id != TypeTable::ERROR_ID

@@ -189,7 +189,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         type_id
     }
 
-    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
         let type_id = self.resolve_type(&field.ttpe);
         let pointer_type = self
             .types
@@ -198,7 +198,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         self.variables
             .set_variable_type_id(field.name, pointer_type);
 
-        TypeTable::VOID_ID
+        self.types.set_type_id(unif_id, pointer_type);
+        pointer_type
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
@@ -271,11 +272,10 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
         let expr_type_id = self.visit_expr(right);
 
-        let var_type_id = if let Expr::Identifier(name) = left {
-            self.variables[*name]
-        } else {
-            self.visit_expr(left)
-        };
+        let mut var_type_id = self.visit_expr(left);
+        if let Expr::Identifier(name) = left {
+            var_type_id = self.variables[*name]
+        }
 
         let var_type_id = if let Type::Pointer(_, type_id) = &self.types[var_type_id] {
             *type_id
@@ -331,6 +331,22 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         };
         self.types.set_type_id(id, type_id);
         type_id
+    }
+
+    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+        let expr_id = self.visit_expr(expr);
+        let type_id = self.resolve_type(&ttpe);
+
+        let expr_type = &self.types[expr_id];
+        let after_type = &self.types[type_id];
+
+        match (expr_type, after_type) {
+            (Type::Vector(mem0, _), Type::Vector(mem1, _)) if mem0.len() == mem1.len() => {
+                self.types.set_type_id(id, type_id);
+                type_id
+            }
+            _ => todo!("Convert type error"),
+        }
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {

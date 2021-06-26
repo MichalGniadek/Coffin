@@ -172,5 +172,9 @@ impl ExprVisitor for NameResolution<'_> {
         self.scopes.pop();
     }
 
+    fn convert(&mut self, _id: Id, expr: &Expr, _ttpe: Name) -> Self::Out {
+        self.visit_expr(expr)
+    }
+
     fn expr_error(&mut self, _id: Id) -> Self::Out {}
 }

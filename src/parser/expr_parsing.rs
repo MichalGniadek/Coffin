@@ -35,10 +35,23 @@ impl ExprResult {
 
 impl Parser<'_> {
     pub fn parse_expr(&mut self, min_binding_power: Option<u8>) -> ExprResult {
-        match self.parse_prefix() {
-            Correct(e) => self.parse_infix(e, min_binding_power.unwrap_or(0)),
-            PanicMode(e) => PanicMode(e),
-        }
+        let expr = match self.parse_prefix() {
+            Correct(e) => e,
+            PanicMode(e) => return PanicMode(e),
+        };
+
+        let min_binding_power = min_binding_power.unwrap_or(0);
+        let expr = match self.parse_infix(expr, min_binding_power) {
+            Correct(e) => e,
+            PanicMode(e) => return PanicMode(e),
+        };
+
+        let expr = match self.parse_sufix(expr) {
+            Correct(e) => e,
+            PanicMode(e) => return PanicMode(e),
+        };
+
+        Correct(expr)
     }
 
     fn parse_prefix(&mut self) -> ExprResult {
@@ -153,82 +166,92 @@ impl Parser<'_> {
             };
 
             if binding_power + assoc > min_binding_power {
-                let (id, (right, is_panic)) = if let IndexAccess = kind {
-                    let id = self.consume();
-                    let right = self.parse_expr(None).destruct();
-                    self.spans[id].end = self.skip().end;
-                    (id, right)
-                } else {
-                    (
-                        self.consume(),
-                        self.parse_expr(Some(binding_power)).destruct(),
-                    )
-                };
-
-                left = match (left, kind, right) {
-                    // Binary
-                    (left, Binary(kind), right) => {
-                        Expr::Binary(id, kind, Box::new(left), Box::new(right))
+                match kind {
+                    Binary(kind) => {
+                        let id = self.consume();
+                        let (right, is_panic) = self.parse_expr(Some(binding_power)).destruct();
+                        left = Expr::Binary(id, kind, Box::new(left), Box::new(right));
+                        if is_panic {
+                            return PanicMode(left);
+                        }
                     }
+                    Assign => {
+                        let id = self.consume();
+                        let (right, is_panic) = self.parse_expr(None).destruct();
 
-                    // Assignment
-                    (Expr::Identifier(n), Assign, right) => {
-                        Expr::Assign(id, Box::new(Expr::Identifier(n)), vec![], Box::new(right))
-                    }
-                    (Expr::Access(_, expr, access), Assign, right) => {
-                        Expr::Assign(id, expr, access, Box::new(right))
-                    }
-                    (left, Assign, right) => {
-                        let left_span = ast_span::get_expr_span(&left, &self.spans);
-                        let right_span = ast_span::get_expr_span(&right, &self.spans);
-                        self.spans[id].start = left_span.start;
-                        self.spans[id].end = right_span.end;
+                        left = match left {
+                            Expr::Identifier(_) => {
+                                Expr::Assign(id, Box::new(left), vec![], Box::new(right))
+                            }
+                            Expr::Access(_, expr, access) => {
+                                Expr::Assign(id, expr, access, Box::new(right))
+                            }
+                            left => {
+                                let left_span = ast_span::get_expr_span(&left, &self.spans);
+                                let right_span = ast_span::get_expr_span(&right, &self.spans);
+                                self.spans[id].start = left_span.start;
+                                self.spans[id].end = right_span.end;
 
-                        return self.err_consume(
-                            id,
-                            ParserErrorKind::ExpressionNotAssignable,
-                            left_span,
-                            &Self::EXPR_SYNC,
-                        );
+                                return self.err_consume(
+                                    id,
+                                    ParserErrorKind::ExpressionNotAssignable,
+                                    left_span,
+                                    &Self::EXPR_SYNC,
+                                );
+                            }
+                        };
+                        if is_panic {
+                            return PanicMode(left);
+                        }
                     }
+                    DotAccess => {
+                        let id = self.consume();
+                        let member = match self.curr_token {
+                            Token::Identifier(spur) => Name {
+                                id: self.consume(),
+                                spur,
+                            },
+                            _ => {
+                                return self.err_consume(
+                                    id,
+                                    ParserErrorKind::expected_identifier(),
+                                    None,
+                                    &Self::EXPR_SYNC,
+                                )
+                            }
+                        };
 
-                    // Dot access
-                    (Expr::Access(a_id, expr, mut access), DotAccess, Expr::Identifier(member)) => {
-                        access.push(AccessType::Dot(id, member));
-                        Expr::Access(a_id, expr, access)
+                        left = match left {
+                            Expr::Access(_, expr, mut access) => {
+                                access.push(AccessType::Dot(id, member));
+                                Expr::Access(id, expr, access)
+                            }
+                            left => {
+                                Expr::Access(id, Box::new(left), vec![AccessType::Dot(id, member)])
+                            }
+                        }
                     }
-                    (left, DotAccess, Expr::Identifier(member)) => {
-                        Expr::Access(id, Box::new(left), vec![AccessType::Dot(id, member)])
+                    IndexAccess => {
+                        let id = self.consume();
+                        let (right, is_panic) = self.parse_expr(None).destruct();
+                        if !is_panic {
+                            self.spans[id].end = self.skip().end;
+                        }
+
+                        left = match left {
+                            Expr::Access(_, expr, mut access) => {
+                                access.push(AccessType::Index(id, Box::new(right)));
+                                Expr::Access(id, expr, access)
+                            }
+                            left => {
+                                Expr::Access(id, Box::new(left), vec![AccessType::Index(id, Box::new(right))])
+                            }
+                        };
+
+                        if is_panic {
+                            return PanicMode(left);
+                        }
                     }
-                    (left, DotAccess, right) => {
-                        let left_span = ast_span::get_expr_span(&left, &self.spans);
-                        let right_span = ast_span::get_expr_span(&right, &self.spans);
-
-                        self.spans[id].start = left_span.start;
-                        self.spans[id].end = right_span.end;
-
-                        return self.err_consume(
-                            id,
-                            ParserErrorKind::ExpectedIdentifierAfterDot,
-                            right_span,
-                            &Self::EXPR_SYNC,
-                        );
-                    }
-
-                    // Index access
-                    (Expr::Access(a_id, expr, mut access), IndexAccess, right) => {
-                        access.push(AccessType::Index(id, Box::new(right)));
-                        Expr::Access(a_id, expr, access)
-                    }
-                    (left, IndexAccess, right) => Expr::Access(
-                        id,
-                        Box::new(left),
-                        vec![AccessType::Index(id, Box::new(right))],
-                    ),
-                };
-
-                if is_panic {
-                    return PanicMode(left);
                 }
             } else {
                 break;
@@ -236,5 +259,29 @@ impl Parser<'_> {
         }
 
         Correct(left)
+    }
+
+    fn parse_sufix(&mut self, left: Expr) -> ExprResult {
+        match self.curr_token {
+            Token::As => {
+                let id = self.consume();
+                let name = match self.curr_token {
+                    Token::Identifier(spur) => Name {
+                        id: self.consume(),
+                        spur,
+                    },
+                    _ => {
+                        return self.err_consume(
+                            id,
+                            ParserErrorKind::expected_identifier(),
+                            None,
+                            &Self::EXPR_SYNC,
+                        )
+                    }
+                };
+                Correct(Expr::Convert(id, Box::new(left), name))
+            }
+            _ => Correct(left),
+        }
     }
 }

@@ -10,6 +10,7 @@ fun f ()  {
 	($a).mem[#123].b
 	($a)[(#3 + #2)]
 	($a)[($b).xy]
+	(($a).mem as float4)
 	Err
 }
 fun g ()  {
@@ -21,4 +22,4 @@ fun g ()  {
 }
 
 ===
-Expected identifier after the dot operator. [107..110]
+Expected Identifier. [128..131]

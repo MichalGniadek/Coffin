@@ -104,6 +104,10 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[id].clone()
     }
 
+    fn convert(&mut self, _id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+        self.visit_expr(expr).start..self.0[ttpe.id].end
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }

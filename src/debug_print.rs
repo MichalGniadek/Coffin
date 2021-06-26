@@ -264,6 +264,16 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
+    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+        format!(
+            "({} {}as {}){}",
+            self.visit_expr(expr),
+            self.span(id),
+            self.name(ttpe),
+            self.ttpe(id),
+        )
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         format!("{}Err", self.span(id))
     }

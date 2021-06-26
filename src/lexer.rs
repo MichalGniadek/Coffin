@@ -90,6 +90,8 @@ pub enum Token {
     False,
     #[token("fun")]
     Fun,
+    #[token("as")]
+    As,
     #[token("if")]
     If,
     #[token("return")]
@@ -149,6 +151,7 @@ impl Display for Token {
             Token::Else => write!(f, "'else'"),
             Token::False => write!(f, "'false'"),
             Token::Fun => write!(f, "'fun'"),
+            Token::As => write!(f, "'as'"),
             Token::If => write!(f, "'if'"),
             Token::Return => write!(f, "'return'"),
             Token::True => write!(f, "'true'"),

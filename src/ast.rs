@@ -135,6 +135,7 @@ pub enum Expr {
     Float(Id, f32),
     Int(Id, i32),
     Block(Id, Vec<Expr>),
+    Convert(Id, Box<Expr>, Name),
     Error(Id),
 }
 
@@ -155,6 +156,7 @@ impl Expr {
             Expr::Float(id, _) => *id,
             Expr::Int(id, _) => *id,
             Expr::Block(id, _) => *id,
+            Expr::Convert(id, _, _) => *id,
             Expr::Error(id) => *id,
         }
     }
@@ -227,6 +229,7 @@ pub trait ExprVisitor {
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
             Expr::Block(id, exprs) => self.block(*id, exprs),
+            Expr::Convert(id, expr, ttpe) => self.convert(*id, expr, *ttpe),
             Expr::Error(id) => self.expr_error(*id),
         }
     }
@@ -246,5 +249,6 @@ pub trait ExprVisitor {
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
+    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out;
     fn expr_error(&mut self, id: Id) -> Self::Out;
 }

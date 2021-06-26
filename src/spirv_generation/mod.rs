@@ -39,6 +39,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
     };
 
     spirv.code.set_version(1, 3);
+    spirv.code.capability(spirv::Capability::Shader);
     spirv
         .code
         .memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::Simple);
@@ -395,6 +396,21 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(id) => id,
             None => Ok(0), // TODO: should return void id
+        }
+    }
+
+    fn convert(&mut self, id: Id, expr: &Expr, _ttpe: Name) -> Self::Out {
+        let type_before = &self.types[expr.get_id()];
+        let type_after = &self.types[id];
+        let spirv_type_id = self.type_id_to_spirv_id(self.types.type_id(id));
+
+        let expr_id = self.visit_expr(expr)?;
+
+        match (type_before, type_after) {
+            (Type::Vector(_, TypeTable::INT_ID), Type::Vector(_, TypeTable::FLOAT_ID)) => {
+                self.code.convert_s_to_f(spirv_type_id, None, expr_id)
+            }
+            _ => todo!("Conversion error."),
         }
     }
 

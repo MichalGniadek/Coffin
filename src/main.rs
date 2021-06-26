@@ -57,8 +57,16 @@ fn main() {
         );
         exit_with_errors(&file, &ast.errors);
     } else {
-        let module = spirv_generation::visit(&mut ast, &variables, &types).unwrap();
-        println!("{}", module.disassemble())
+        match spirv_generation::visit(&mut ast, &variables, &types) {
+            Ok(module) => println!("{}", module.disassemble()),
+            Err(_) => {
+                let file = SimpleFile::new(
+                    opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
+                    src,
+                );
+                exit_with_errors(&file, &ast.errors);
+            }
+        }
     }
 }
 

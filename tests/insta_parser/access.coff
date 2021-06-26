@@ -6,6 +6,7 @@ fun f(){
     a[3+2]
     
     a[b.xy]
+    a.mem as float4
 
     a.123
 }

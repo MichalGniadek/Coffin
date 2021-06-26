@@ -235,12 +235,27 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         Ok(fun_spirv_id)
     }
 
-    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
         let pointer_id = self.type_id_to_spirv_id(self.types.type_id(unif_id));
         let var = self
             .code
             .variable(pointer_id, None, spirv::StorageClass::UniformConstant, None);
         self.variables.set_variable_spirv_id(field.name, var);
+
+        let binding = attrs.get_attr(self.rodeo.get("binding"));
+        if binding.len() != 1 {
+            todo!("Binding error.")
+        }
+        match binding[0].1[..] {
+            [_, (_, Token::Int(i)), _] => {
+                self.code.decorate(
+                    var,
+                    spirv::Decoration::Binding,
+                    &[dr::Operand::LiteralInt32(i as u32)],
+                );
+            }
+            _ => todo!("Binding error."),
+        }
 
         Ok(var)
     }

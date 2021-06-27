@@ -7,8 +7,8 @@ use codespan_reporting::{
     },
 };
 use coffin2::{
-    error::CoffinError, lexer, name_resolution, parser, spirv_generation, type_resolution,
-    validate_spirv,
+    debug_print, error::CoffinError, lexer, name_resolution, parser, spirv_generation,
+    type_resolution, validate_spirv,
 };
 use rspirv::binary::{Assemble, Disassemble};
 use std::{fs, path::PathBuf};
@@ -32,6 +32,10 @@ struct Opt {
     /// Dissasemble spirv output
     #[structopt(long, short)]
     disassemble: bool,
+
+    /// Debug print the AST
+    #[structopt(long, short)]
+    print: bool,
 }
 
 fn main() {
@@ -50,6 +54,13 @@ fn main() {
     let mut ast = parser::parse(lexer);
     let variables = name_resolution::visit(&mut ast);
     let types = type_resolution::visit(&mut ast, &variables);
+
+    if opt.print {
+        println!(
+            "{}",
+            debug_print::visit(&ast, true, false, Some(&variables), Some(&types))
+        );
+    }
 
     let module = if !ast.errors.is_empty() {
         let file = SimpleFile::new(

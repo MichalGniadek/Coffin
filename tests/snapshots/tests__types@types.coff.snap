@@ -10,7 +10,7 @@ fun a@X ()  {
 		($a@0: int + $b@1: int): int
 	}: int): void
 	(let d@3 = {
-		(($a@0: error) = $b@1: int): void
+		(($a@0: int) = $b@1: int): void
 	}: void): void
 }: void
 

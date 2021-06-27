@@ -34,6 +34,7 @@ pub enum Type {
     Void,
     Error,
     Int,
+    UInt,
     Float,
     Image(/* TODO */),
     // Should probably be optimized. A Vec for each type
@@ -50,6 +51,7 @@ impl Display for Type {
             Type::Void => write!(f, "void"),
             Type::Error => write!(f, "error"),
             Type::Int => write!(f, "int"),
+            Type::UInt => write!(f, "uint"),
             Type::Float => write!(f, "float"),
             Type::Image() => write!(f, "image"),
             Type::Pointer(_, _) => write!(f, "pointer"),
@@ -78,14 +80,16 @@ impl TypeTable {
     pub const ERROR_ID: TypeId = TypeId(0);
     pub const VOID_ID: TypeId = TypeId(1);
     pub const INT_ID: TypeId = TypeId(2);
-    pub const FLOAT_ID: TypeId = TypeId(3);
+    pub const UINT_ID: TypeId = TypeId(3);
+    pub const FLOAT_ID: TypeId = TypeId(4);
 
-    pub const IVEC_ID: [TypeId; 5] = [TypeId(0), TypeId(4), TypeId(5), TypeId(6), TypeId(7)];
-    pub const FVEC_ID: [TypeId; 5] = [TypeId(0), TypeId(8), TypeId(9), TypeId(10), TypeId(11)];
+    pub const IVEC_ID: [TypeId; 5] = [TypeId(0), TypeId(5), TypeId(6), TypeId(7), TypeId(8)];
+    pub const UVEC_ID: [TypeId; 5] = [TypeId(0), TypeId(9), TypeId(10), TypeId(11), TypeId(12)];
+    pub const FVEC_ID: [TypeId; 5] = [TypeId(0), TypeId(13), TypeId(14), TypeId(15), TypeId(16)];
 
-    pub const ID_ID: TypeId = Self::IVEC_ID[3];
+    pub const ID_ID: TypeId = Self::UVEC_ID[3];
 
-    pub const IMAGE_ID: TypeId = TypeId(12);
+    pub const IMAGE_ID: TypeId = TypeId(17);
 
     pub fn new(max_id: Id) -> Self {
         Self {
@@ -93,11 +97,16 @@ impl TypeTable {
                 Type::Error,
                 Type::Void,
                 Type::Int,
+                Type::UInt,
                 Type::Float,
                 Type::Vector(vec!['x'], Self::INT_ID),
                 Type::Vector(vec!['x', 'y'], Self::INT_ID),
                 Type::Vector(vec!['x', 'y', 'z'], Self::INT_ID),
                 Type::Vector(vec!['x', 'y', 'z', 'w'], Self::INT_ID),
+                Type::Vector(vec!['x'], Self::UINT_ID),
+                Type::Vector(vec!['x', 'y'], Self::UINT_ID),
+                Type::Vector(vec!['x', 'y', 'z'], Self::UINT_ID),
+                Type::Vector(vec!['x', 'y', 'z', 'w'], Self::UINT_ID),
                 Type::Vector(vec!['x'], Self::FLOAT_ID),
                 Type::Vector(vec!['x', 'y'], Self::FLOAT_ID),
                 Type::Vector(vec!['x', 'y', 'z'], Self::FLOAT_ID),
@@ -195,8 +204,8 @@ mod tests {
         assert_eq!(types[TypeTable::VOID_ID], Type::Void);
         assert_eq!(types[TypeTable::INT_ID], Type::Int);
         assert_eq!(types[TypeTable::FLOAT_ID], Type::Float);
-        assert_eq!(types[TypeTable::IVEC_ID[0]], Type::Error);
 
+        assert_eq!(types[TypeTable::IVEC_ID[0]], Type::Error);
         assert_eq!(
             types[TypeTable::IVEC_ID[1]],
             Type::Vector(vec!['x'], TypeTable::INT_ID)
@@ -214,6 +223,25 @@ mod tests {
             Type::Vector(vec!['x', 'y', 'z', 'w'], TypeTable::INT_ID)
         );
 
+        assert_eq!(types[TypeTable::UVEC_ID[0]], Type::Error);
+        assert_eq!(
+            types[TypeTable::UVEC_ID[1]],
+            Type::Vector(vec!['x'], TypeTable::UINT_ID)
+        );
+        assert_eq!(
+            types[TypeTable::UVEC_ID[2]],
+            Type::Vector(vec!['x', 'y'], TypeTable::UINT_ID)
+        );
+        assert_eq!(
+            types[TypeTable::UVEC_ID[3]],
+            Type::Vector(vec!['x', 'y', 'z'], TypeTable::UINT_ID)
+        );
+        assert_eq!(
+            types[TypeTable::UVEC_ID[4]],
+            Type::Vector(vec!['x', 'y', 'z', 'w'], TypeTable::UINT_ID)
+        );
+
+        assert_eq!(types[TypeTable::FVEC_ID[0]], Type::Error);
         assert_eq!(
             types[TypeTable::FVEC_ID[1]],
             Type::Vector(vec!['x'], TypeTable::FLOAT_ID)
@@ -233,14 +261,14 @@ mod tests {
 
         assert_eq!(
             types[TypeTable::ID_ID],
-            Type::Vector(vec!['x', 'y', 'z'], TypeTable::INT_ID),
+            Type::Vector(vec!['x', 'y', 'z'], TypeTable::UINT_ID),
         );
 
         assert_eq!(types[TypeTable::IMAGE_ID], Type::Image(),);
 
         assert_eq!(
             types.types.len(),
-            13,
+            18,
             "Triggers if someone adds a builtin type without updating the tests."
         );
     }

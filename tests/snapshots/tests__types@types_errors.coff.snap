@@ -4,11 +4,11 @@ expression: "test_util(path, false, false, true)"
 
 ---
 fun a@X (arg1@0 : NonExistant@X, arg2@1 : int@X)  {
-	(($arg2@1: error) = {
+	(($arg2@1: int) = {
 		(#2: int + #2: int): int
 	}: int): void
-	(($arg2@1: error) = {
-		(($arg2@1: error) = #3: int): void
+	(($arg2@1: int) = {
+		(($arg2@1: int) = #3: int): void
 	}: void): void
 	(#3: int + {
 		

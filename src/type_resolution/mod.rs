@@ -88,6 +88,8 @@ impl TypeResolution<'_, '_> {
                                     type_id = TypeTable::IVEC_ID[member_str.chars().count()]
                                 } else if vec_type == &TypeTable::FLOAT_ID {
                                     type_id = TypeTable::FVEC_ID[member_str.chars().count()]
+                                } else if vec_type == &TypeTable::UINT_ID {
+                                    type_id = TypeTable::UVEC_ID[member_str.chars().count()]
                                 } else {
                                     todo!()
                                 }
@@ -122,7 +124,7 @@ impl TypeResolution<'_, '_> {
                         }
                         Type::Image() => {
                             if self.visit_expr(expr) != TypeTable::IVEC_ID[2] {
-                                // TODO: Incorrect error
+                                // todo!: Incorrect error
                                 self.errors.push(CoffinError::IndexIsntAnInt(
                                     ast_span::get_expr_span(expr, &self.spans),
                                 ));
@@ -151,7 +153,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
     fn fun(
         &mut self,
         fun_id: Id,
-        _attrs: &Attrs,
+        attrs: &Attrs,
         _name: Name,
         _paren_id: Id,
         params: &Vec<Field>,
@@ -160,18 +162,38 @@ impl ItemVisitor for TypeResolution<'_, '_> {
     ) -> Self::Out {
         let mut param_types = vec![];
 
-        for field in params {
-            let type_id = self.resolve_type(&field.ttpe);
-            param_types.push(type_id);
+        let compute = attrs.get_attr(self.rodeo.get("compute"));
+        if compute.len() == 0 {
+            for field in params {
+                let type_id = self.resolve_type(&field.ttpe);
+                param_types.push(type_id);
 
-            // Isn't excatly correct, some parameter have StorageClass::Input.
-            // This is corrected during spirv generation.
+                let pointer_type = self
+                    .types
+                    .new_type(Type::Pointer(StorageClass::Function, type_id));
+
+                self.variables
+                    .set_variable_type_id(field.name, pointer_type);
+            }
+        } else if compute.len() == 1 {
+            if params.len() != 1 {
+                todo!("Compute shader function must have one parameter of type Id");
+            }
+            let id_param = params[0];
+
+            let type_id = self.resolve_type(&id_param.ttpe);
+            if type_id != TypeTable::ID_ID {
+                todo!("Compute shader function must have one parameter of type Id");
+            }
+
             let pointer_type = self
                 .types
-                .new_type(Type::Pointer(StorageClass::Function, type_id));
+                .new_type(Type::Pointer(StorageClass::Input, type_id));
 
             self.variables
-                .set_variable_type_id(field.name, pointer_type);
+                .set_variable_type_id(id_param.name, pointer_type);
+        } else if compute.len() > 1 {
+            todo!("More than one compute attribute")
         }
 
         let return_type = match ret {

@@ -38,11 +38,11 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         errors: &mut ast.errors,
     };
 
-    spirv.code.set_version(1, 3);
+    spirv.code.set_version(1, 5);
     spirv.code.capability(spirv::Capability::Shader);
     spirv
         .code
-        .memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::Simple);
+        .memory_model(spirv::AddressingModel::Logical, spirv::MemoryModel::GLSL450);
 
     // Uniform collection prepass
     spirv.uniforms = ast
@@ -112,6 +112,7 @@ impl SpirvGen<'_, '_, '_> {
                 Type::Void => self.code.type_void(),
                 Type::Error => self.internal_error("Trying to get spirv id for Type::Error"),
                 Type::Int => self.code.type_int(32, 1),
+                Type::UInt => self.code.type_int(32, 0),
                 Type::Float => self.code.type_float(32),
                 Type::Image() => {
                     let float_id = self.code.type_float(32);
@@ -162,7 +163,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         &mut self,
         fun_id: Id,
         attrs: &Attrs,
-        _name: Name,
+        name: Name,
         _paren_id: Id,
         params: &Vec<Field>,
         _ret: &Option<(Id, Name)>,
@@ -218,7 +219,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
             self.code.entry_point(
                 spirv::ExecutionModel::GLCompute,
                 fun_spirv_id,
-                "main_compute",
+                self.rodeo.resolve(&name.spur),
                 &self.uniforms,
             );
 
@@ -264,6 +265,12 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                     var,
                     spirv::Decoration::Binding,
                     &[dr::Operand::LiteralInt32(i as u32)],
+                );
+                // Hack
+                self.code.decorate(
+                    var,
+                    spirv::Decoration::DescriptorSet,
+                    &[dr::Operand::LiteralInt32(0 as u32)],
                 );
             }
             _ => todo!("Binding error."),
@@ -357,11 +364,6 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         access: &Vec<AccessType>,
         right: &Expr,
     ) -> Self::Out {
-        let /*mut*/ pointer = if let Expr::Identifier(name) = left {
-            self.variables[*name]
-        } else {
-            self.visit_expr(left)?
-        };
         let right = self.visit_expr(right)?;
 
         let /*mut*/ type_id = self.types.type_id(left.get_id());
@@ -372,8 +374,8 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
                 AccessType::Index(_, expr) => match &self.types[type_id] {
                     Type::Image() => {
                         let expr = self.visit_expr(expr)?;
-
-                        self.code.image_write(pointer, expr, right, None, &[])?;
+                        let image = self.visit_expr(left)?;
+                        self.code.image_write(image, expr, right, None, &[])?;
                         return Ok(0);
                     }
                     _ => return Ok(self.internal_error("Type non indexable.")),
@@ -381,7 +383,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
             }
         }
 
-        self.code.store(pointer, right, None, &[])?;
+        // self.code.store(pointer, right, None, &[])?;
 
         Ok(0) // TODO: should return void id
     }
@@ -420,6 +422,12 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         match (type_before, type_after) {
             (Type::Vector(_, TypeTable::INT_ID), Type::Vector(_, TypeTable::FLOAT_ID)) => {
                 self.code.convert_s_to_f(spirv_type_id, None, expr_id)
+            }
+            (Type::Vector(_, TypeTable::UINT_ID), Type::Vector(_, TypeTable::FLOAT_ID)) => {
+                self.code.convert_u_to_f(spirv_type_id, None, expr_id)
+            }
+            (Type::Vector(_, TypeTable::UINT_ID), Type::Vector(_, TypeTable::INT_ID)) => {
+                self.code.bitcast(spirv_type_id, None, expr_id)
             }
             _ => todo!("Conversion error."),
         }

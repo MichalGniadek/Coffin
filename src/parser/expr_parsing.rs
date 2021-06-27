@@ -243,9 +243,11 @@ impl Parser<'_> {
                                 access.push(AccessType::Index(id, Box::new(right)));
                                 Expr::Access(id, expr, access)
                             }
-                            left => {
-                                Expr::Access(id, Box::new(left), vec![AccessType::Index(id, Box::new(right))])
-                            }
+                            left => Expr::Access(
+                                id,
+                                Box::new(left),
+                                vec![AccessType::Index(id, Box::new(right))],
+                            ),
                         };
 
                         if is_panic {

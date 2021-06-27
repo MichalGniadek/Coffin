@@ -4,8 +4,8 @@ expression: "test_util(path, false, false, true)"
 
 ---
 fun asd@X (a@0 : int@X, b@1 : int@X)  {
-	(($a@0: error) = #3: int): void
-	(($b@1: error) = #5: int): void
+	(($a@0: int) = #3: int): void
+	(($b@1: int) = #5: int): void
 }: void
 
 ===

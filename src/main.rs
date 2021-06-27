@@ -45,8 +45,7 @@ fn main() {
         Ok(src) => src,
         Err(err) => {
             let file = SimpleFile::new("", "");
-            let err = CoffinError::from(err);
-            exit_with_errors(&file, &[err]);
+            exit_with_errors(&file, &[CoffinError::IOError(err)]);
         }
     };
 

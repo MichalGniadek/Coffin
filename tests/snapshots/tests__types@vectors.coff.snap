@@ -23,10 +23,10 @@ fun f@X (a@1 : float4@X)  {
 }: error
 
 ===
-Index isn't an int. [114..117]
-Index isn't an int. [134..137]
+Mismatched type. Expected: vector, got: int. [114..117]
+Mismatched type. Expected: vector, got: int. [134..137]
 Incorrect vector fields. [148..152]
 Incorrect vector fields. [160..161]
-Index isn't an int. [179..180]
-Swizzle isn't at the end. [191..192]
+Mismatched type. Expected: int, got: vector. [179..180]
+Swizzle not at the end. [191..192]
 Type doesn't have fields. [223..226]

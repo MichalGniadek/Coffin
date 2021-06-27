@@ -2,33 +2,22 @@ use crate::lexer::Token;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lasso::Spur;
 use logos::Span;
-use std::io;
+use std::{fmt::Display, io};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum CoffinError {
-    #[error("IO error \"{0}\"")]
-    IOError(#[from] io::Error),
+    IOError(io::Error),
 
-    #[error("Internal compiler error: {0} [{1:?}]. This is a bug, please report it.")]
-    InternalError(String, Option<Span>),
-
-    #[error("{0} [{1:?}]")]
     ParserError(ParserErrorKind, Span),
 
-    #[error("Undeclared variable. [{0:?}]")]
     UndeclaredVariable(Span),
 
-    #[error("Undeclared type. [{0:?}]")]
     UndeclaredType(Span),
-    #[error("Mismatched type. Expected {expected}, got {got}. [{span:?}]")]
-    MismatchedTypes {
+    MismatchedType {
         span: Span,
         expected: String,
         got: String,
     },
-    #[error(
-        "Wrong types for '{op}', {left_type} [{left_span:?}] and {right_type} [{right_span:?}]."
-    )]
     WrongTypesForOperator {
         op: String,
         left_span: Span,
@@ -36,96 +25,160 @@ pub enum CoffinError {
         right_span: Span,
         right_type: String,
     },
+    ComputeFunctionMustHaveOnlyOneParameterOfTypeId(Span),
+    MoreThanOneAttribute(String, Span),
 
-    #[error("Swizzle isn't at the end. [{0:?}]")]
     SwizzleNotAtTheEnd(Span),
-    #[error("Index isn't an int. [{0:?}]")]
-    IndexIsntAnInt(Span),
-    #[error("Type doesn't have fields. [{0:?}]")]
     TypeDoesntHaveFields(Span),
-    #[error("Type can't be indexed. [{0:?}]")]
     TypeCantBeIndexed(Span),
-    #[error("Incorrect vector fields. [{0:?}]")]
     IncorrectVectorFields(Span),
 }
 
 impl CoffinError {
-    pub fn report(&self) -> Diagnostic<()> {
+    fn get_msg(&self) -> (String, Option<&Span>, Vec<(String, &Span)>) {
         match self {
-            CoffinError::IOError(err) => Diagnostic::error().with_message(format!("{}", err)),
-            CoffinError::InternalError(err, span) => {
-                let mut diag = Diagnostic::error().with_message(format!("{}", err));
-
-                if let Some(span) = span {
-                    diag = diag.with_labels(vec![
-                        Label::primary((), span.clone()).with_message(format!("{}", err))
-                    ]);
-                }
-
-                diag
-            }
-            CoffinError::ParserError(kind, span) => Diagnostic::error()
-                .with_message(format!("{}", kind))
-                .with_labels(vec![
-                    Label::primary((), span.clone()).with_message(format!("{}", kind))
-                ]),
-            CoffinError::UndeclaredVariable(span) => Diagnostic::error()
-                .with_message("Undeclared variable.")
-                .with_labels(vec![
-                    Label::primary((), span.clone()).with_message("Undeclared variable.")
-                ]),
-            CoffinError::UndeclaredType(span) => Diagnostic::error()
-                .with_message("Undeclared type.")
-                .with_labels(vec![
-                    Label::primary((), span.clone()).with_message("Undeclared type.")
-                ]),
-            CoffinError::MismatchedTypes {
+            CoffinError::IOError(err) => (format!("IO Error: '{}'", err), None, vec![]),
+            CoffinError::ParserError(kind, span) => match kind {
+                ParserErrorKind::ExpectedPrefixToken => (
+                    "Expected prefix token.".into(),
+                    Some(span),
+                    vec![("here".into(), span)],
+                ),
+                ParserErrorKind::ExpectedToken(token) => (
+                    format!("Expected {}.", token),
+                    Some(span),
+                    vec![("here".into(), span)],
+                ),
+                ParserErrorKind::ExpressionNotAssignable => (
+                    "Expression not assignable.".into(),
+                    Some(span),
+                    vec![("here".into(), span)],
+                ),
+                ParserErrorKind::ExpectedItem => (
+                    "Expected item.".into(),
+                    Some(span),
+                    vec![("here".into(), span)],
+                ),
+            },
+            CoffinError::UndeclaredVariable(span) => (
+                "Undeclared variable.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::UndeclaredType(span) => (
+                "Undeclared type.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::MismatchedType {
                 span,
                 expected,
                 got,
-            } => {
-                let message = format!("Mismatched type. Expected {}, got {}.", expected, got);
-                Diagnostic::error()
-                    .with_message(message.clone())
-                    .with_labels(vec![Label::primary((), span.clone()).with_message(message)])
-            }
+            } => (
+                format!("Mismatched type. Expected: {}, got: {}.", expected, got),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
             CoffinError::WrongTypesForOperator {
                 op,
                 left_span,
                 left_type,
                 right_span,
                 right_type,
-            } => {
-                let message = format!(
-                    "Wrong types for '{}', {} and {}.",
-                    op, left_type, right_type
-                );
-                Diagnostic::error()
-                    .with_message(message)
-                    .with_labels(vec![Label::primary((), left_span.clone())
-                        .with_message(format!("{}", left_type))])
-                    .with_labels(vec![Label::primary((), right_span.clone())
-                        .with_message(format!("{}", right_type))])
-            }
-            err => Diagnostic::error().with_message(format!("{}", err)),
+            } => (
+                format!("Wrong types for '{}': {} and {}", op, left_type, right_type),
+                Some(left_span),
+                vec![
+                    (format!("{}", left_type), left_span),
+                    (format!("{}", right_type), right_span),
+                ],
+            ),
+            CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(span) => (
+                "Compute function must have only one paramter of type Id.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::MoreThanOneAttribute(string, span) => (
+                format!("More than one {} attribute", string),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::SwizzleNotAtTheEnd(span) => (
+                "Swizzle not at the end.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::TypeDoesntHaveFields(span) => (
+                "Type doesn't have fields.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::TypeCantBeIndexed(span) => (
+                "Type can't be indexed.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
+            CoffinError::IncorrectVectorFields(span) => (
+                "Incorrect vector fields.".into(),
+                Some(span),
+                vec![("here".into(), span)],
+            ),
         }
+    }
+
+    pub fn report(&self) -> Diagnostic<()> {
+        let (msg, _, labels) = self.get_msg();
+
+        let labels = labels
+            .iter()
+            .map(|(msg, span)| Label::primary((), (*span).clone()).with_message(msg))
+            .collect();
+
+        Diagnostic::error().with_message(msg).with_labels(labels)
     }
 }
 
-#[derive(Debug, Clone, thiserror::Error)]
+impl Display for CoffinError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (msg, span, _) = self.get_msg();
+        let span = match span {
+            Some(span) => format!(" [{:?}]", span),
+            None => format!(""),
+        };
+        write!(f, "{}{}", msg, span)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ParserErrorKind {
-    #[error("Expected prefix token.")]
     ExpectedPrefixToken,
-    #[error("Expected {0}.")]
     ExpectedToken(Token),
-    #[error("Expression not assignable.")]
     ExpressionNotAssignable,
-    #[error("Expected an item.")]
     ExpectedItem,
 }
 
 impl ParserErrorKind {
     pub fn expected_identifier() -> Self {
         Self::ExpectedToken(Token::Identifier(Spur::default()))
+    }
+}
+
+pub fn internal_error(msg: &str) -> ! {
+    panic!(
+        "Internal compiler error. This is a bug please report it.\n{}",
+        msg
+    )
+}
+
+pub trait InternalError<T> {
+    fn ie_expect(self, msg: &str) -> T;
+}
+
+impl<T> InternalError<T> for Option<T> {
+    fn ie_expect(self, msg: &str) -> T {
+        match self {
+            Some(val) => val,
+            None => internal_error(msg),
+        }
     }
 }

@@ -24,7 +24,7 @@ pub fn compile_file(path: &Path) -> Result<Vec<u32>, Vec<CoffinError>> {
     let src = match fs::read_to_string(path) {
         Ok(src) => src,
         Err(err) => {
-            return Err(vec![CoffinError::from(err)]);
+            return Err(vec![CoffinError::IOError(err)]);
         }
     };
 

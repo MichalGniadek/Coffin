@@ -4,7 +4,7 @@ use self::types::{Type, TypeId, TypeTable, VariableTypes};
 use crate::{
     ast::{self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     ast_span,
-    error::CoffinError,
+    error::{internal_error, CoffinError},
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
     type_resolution::types::FunType,
@@ -63,11 +63,6 @@ impl TypeResolution<'_, '_> {
         }
     }
 
-    fn internal_error(&mut self, str: String) -> TypeId {
-        self.errors.push(CoffinError::InternalError(str, None));
-        TypeTable::ERROR_ID
-    }
-
     fn access_type(&mut self, access: &Vec<AccessType>, mut type_id: TypeId) -> TypeId {
         for (i, a) in access.iter().enumerate() {
             match a {
@@ -111,23 +106,28 @@ impl TypeResolution<'_, '_> {
                     self.types.set_type_id(*id, type_id);
                 }
                 AccessType::Index(id, expr) => {
+                    let expr_type = self.visit_expr(expr);
+
                     match &self.types[type_id] {
                         &Type::Vector(_, vec_type) => {
-                            if self.visit_expr(expr) == TypeTable::INT_ID {
+                            if expr_type == TypeTable::INT_ID {
                                 type_id = vec_type;
                             } else {
-                                self.errors.push(CoffinError::IndexIsntAnInt(
-                                    ast_span::get_expr_span(expr, &self.spans),
-                                ));
+                                self.errors.push(CoffinError::MismatchedType {
+                                    span: ast_span::get_expr_span(&expr, &self.spans),
+                                    expected: format!("{}", self.types[TypeTable::INT_ID]),
+                                    got: format!("{}", self.types[expr_type]),
+                                });
                                 return TypeTable::ERROR_ID;
                             }
                         }
                         Type::Image() => {
-                            if self.visit_expr(expr) != TypeTable::IVEC_ID[2] {
-                                // todo!: Incorrect error
-                                self.errors.push(CoffinError::IndexIsntAnInt(
-                                    ast_span::get_expr_span(expr, &self.spans),
-                                ));
+                            if expr_type != TypeTable::IVEC_ID[2] {
+                                self.errors.push(CoffinError::MismatchedType {
+                                    span: ast_span::get_expr_span(&expr, &self.spans),
+                                    expected: format!("{}", self.types[TypeTable::IVEC_ID[2]]),
+                                    got: format!("{}", self.types[expr_type]),
+                                });
                                 return TypeTable::ERROR_ID;
                             } else {
                                 type_id = TypeTable::FVEC_ID[4];
@@ -155,7 +155,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         fun_id: Id,
         attrs: &Attrs,
         _name: Name,
-        _paren_id: Id,
+        paren_id: Id,
         params: &Vec<Field>,
         ret: &Option<(Id, Name)>,
         body: &Expr,
@@ -177,13 +177,23 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             }
         } else if compute.len() == 1 {
             if params.len() != 1 {
-                todo!("Compute shader function must have one parameter of type Id");
+                self.errors.push(
+                    CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
+                        self.spans[paren_id].clone(),
+                    ),
+                );
+                return TypeTable::ERROR_ID;
             }
             let id_param = params[0];
 
             let type_id = self.resolve_type(&id_param.ttpe);
             if type_id != TypeTable::ID_ID {
-                todo!("Compute shader function must have one parameter of type Id");
+                self.errors.push(
+                    CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
+                        self.spans[id_param.ttpe.id].clone(),
+                    ),
+                );
+                return TypeTable::ERROR_ID;
             }
 
             let pointer_type = self
@@ -193,7 +203,11 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             self.variables
                 .set_variable_type_id(id_param.name, pointer_type);
         } else if compute.len() > 1 {
-            todo!("More than one compute attribute")
+            self.errors.push(CoffinError::MoreThanOneAttribute(
+                "compute".into(),
+                self.spans[compute[1].0.id].clone(),
+            ));
+            return TypeTable::ERROR_ID;
         }
 
         let return_type = match ret {
@@ -312,7 +326,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             && var_type_id != TypeTable::ERROR_ID
         {
             let span = ast_span::get_expr_span(right, self.spans);
-            self.errors.push(CoffinError::MismatchedTypes {
+            self.errors.push(CoffinError::MismatchedType {
                 span,
                 expected: format!("{}", self.types[var_type_id]),
                 got: format!("{}", self.types[expr_type_id]),
@@ -328,7 +342,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         let type_id = match self.types[pointer_id] {
             Type::Pointer(_, type_id) => type_id,
             Type::Error => TypeTable::ERROR_ID,
-            _ => self.internal_error(String::from("Variable types must be pointers.")),
+            _ => internal_error("Variable types must be pointers."),
         };
 
         self.types.set_type_id(name.id, type_id);

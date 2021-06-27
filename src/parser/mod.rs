@@ -6,7 +6,7 @@ pub mod spans_table;
 use self::{error_node::ErrorNode, spans_table::SpanTable};
 use crate::{
     ast::{Ast, Field, Id, Name},
-    error::{CoffinError, ParserErrorKind},
+    error::{internal_error, CoffinError, ParserErrorKind},
     lexer::Token,
 };
 use logos::{Lexer, Span};
@@ -76,16 +76,11 @@ impl Parser<'_> {
     }
 
     fn consume_expect(&mut self, token: Token) -> Id {
-        // If the next token isn't the expected one, add an internal compiler error to the errors
-        // and consume rest of the tokens.
         if self.curr_token != token {
-            self.errors.push(CoffinError::InternalError(
-                format!("Consume expected: {}, got: {}", token, self.curr_token),
-                Some(self.curr_span.clone()),
-            ));
-            while !Self::EOF_SYNC.contains(&self.curr_token) {
-                self.advance();
-            }
+            internal_error(&format!(
+                "Consume expected: {}, got: {}",
+                token, self.curr_token
+            ))
         }
 
         self.consume()

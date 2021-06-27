@@ -17,5 +17,5 @@ fun a@X (arg1@0 : NonExistant@X, arg2@1 : int@X)  {
 
 ===
 Undeclared type. [12..23]
-Mismatched type. Expected int, got void. [67..77]
-Wrong types for '+', int [83..84] and void [87..89].
+Mismatched type. Expected: int, got: void. [67..77]
+Wrong types for '+': int and void [83..84]

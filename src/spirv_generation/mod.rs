@@ -5,7 +5,7 @@ use crate::{
     ast::{
         AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name,
     },
-    error::CoffinError,
+    error::{internal_error, CoffinError, InternalError},
     lexer::Token,
     name_resolution::VariableTable,
     parser::spans_table::SpanTable,
@@ -52,10 +52,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
             if let Item::Uniform(unif_id, attrs, field) = item {
                 match spirv.uniform(*unif_id, attrs, field) {
                     Ok(id) => Some(id),
-                    Err(err) => {
-                        spirv.internal_error(&format!("Builder error: {}", err));
-                        None
-                    }
+                    Err(err) => internal_error(&format!("Builder error: {}", err)),
                 }
             } else {
                 None
@@ -70,7 +67,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         .filter(|item| !matches!(item, Item::Uniform(_, _, _)))
     {
         if let Err(err) = spirv.visit_item(item) {
-            spirv.internal_error(&format!("Builder error: {}", err));
+            internal_error(&format!("Builder error: {}", err));
         }
     }
 
@@ -95,12 +92,6 @@ struct SpirvGen<'ast, 'vars, 'types> {
 }
 
 impl SpirvGen<'_, '_, '_> {
-    fn internal_error(&mut self, str: &str) -> u32 {
-        self.errors
-            .push(CoffinError::InternalError(str.to_owned(), None));
-        0
-    }
-
     fn type_id_to_spirv_id(&mut self, type_id: TypeId) -> u32 {
         if let Some(id) = self.spirv_types.get(&type_id) {
             *id
@@ -110,7 +101,7 @@ impl SpirvGen<'_, '_, '_> {
 
             let spirv_id = match ttpe {
                 Type::Void => self.code.type_void(),
-                Type::Error => self.internal_error("Trying to get spirv id for Type::Error"),
+                Type::Error => internal_error("Trying to get spirv id for Type::Error"),
                 Type::Int => self.code.type_int(32, 1),
                 Type::UInt => self.code.type_int(32, 0),
                 Type::Float => self.code.type_float(32),
@@ -173,7 +164,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         let fun_type_spirv_id = self.type_id_to_spirv_id(type_id);
         let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.type_id_to_spirv_id(fun.get_return_type()),
-            _ => self.internal_error("Function must have a Type::Fun type"),
+            _ => internal_error("Function must have a Type::Fun type"),
         };
 
         let fun_spirv_id = self.code.begin_function(
@@ -280,7 +271,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
     }
 
     fn item_error(&mut self, _id: Id) -> Self::Out {
-        Ok(self.internal_error("Spirv generation shouldn't be called with errors."))
+        internal_error("Spirv generation shouldn't be called with errors.")
     }
 }
 
@@ -299,8 +290,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
             (BinOpKind::Mul, Type::Int) => self.code.i_mul(spiv_type, None, left, right),
             (BinOpKind::Div, Type::Int) => self.code.s_div(spiv_type, None, left, right),
             (BinOpKind::Rem, Type::Int) => self.code.s_rem(spiv_type, None, left, right),
-            (BinOpKind::Pow, Type::Int) => Ok(0), // pow() requires extensions.
-            _ => Ok(self.internal_error("Incorrect types and/or operation in binary.")),
+            _ => internal_error("Incorrect types and/or operation in binary."),
         }
     }
 
@@ -336,9 +326,11 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
                             .resolve(&member.spur)
                             .chars()
                             .map(|c| {
-                                members.iter().position(|cc| *cc == c).unwrap_or_else(|| {
-                                    self.internal_error("No member in vector.") as usize
-                                }) as u32
+                                members
+                                    .iter()
+                                    .position(|cc| *cc == c)
+                                    .ie_expect("No member in vector.")
+                                    as u32
                             })
                             .collect();
 
@@ -349,7 +341,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
                             .code
                             .vector_shuffle(spirv_type, None, spirv_id, spirv_id, &indices)?;
                     }
-                    _ => return Ok(self.internal_error("Type without fields.")),
+                    _ => internal_error("Type without fields."),
                 },
                 AccessType::Index(_, _) => todo!(),
             }
@@ -378,7 +370,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
                         self.code.image_write(image, expr, right, None, &[])?;
                         return Ok(0);
                     }
-                    _ => return Ok(self.internal_error("Type non indexable.")),
+                    _ => internal_error("Type non indexable."),
                 },
             }
         }
@@ -434,6 +426,6 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     }
 
     fn expr_error(&mut self, _id: Id) -> Self::Out {
-        Ok(self.internal_error("Spirv generation shouldn't be called with errors."))
+        internal_error("Spirv generation shouldn't be called with errors.")
     }
 }

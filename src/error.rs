@@ -2,7 +2,7 @@ use crate::lexer::Token;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lasso::Spur;
 use logos::Span;
-use std::{fmt::Display, io};
+use std::{error::Error, fmt::Display, io};
 
 #[derive(Debug)]
 pub enum CoffinError {
@@ -148,6 +148,8 @@ impl Display for CoffinError {
         write!(f, "{}{}", msg, span)
     }
 }
+
+impl Error for CoffinError {}
 
 #[derive(Debug, Clone)]
 pub enum ParserErrorKind {

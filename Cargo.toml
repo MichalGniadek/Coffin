@@ -16,7 +16,6 @@ codespan-reporting = "0.11.1"
 rspirv = "0.7"
 spirv-tools = "0.4.0"
 lasso = "0.5.0"
-thiserror = "1.0.24"
 
 [dev-dependencies]
 insta = { version = "1.7.0", features = ["glob"] }

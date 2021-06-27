@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "test_util(path, false, true, false)"
 
 ---
-fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
+fun fn0 (arg0@0 : T, arg1@1 : T)  {
 	(let var0@2 = #0)
 	(($var0@2) = $arg0@0)
 	{
@@ -18,14 +18,14 @@ fun fn0@X (arg0@0 : T@X, arg1@1 : T@X)  {
 	(($var1@5) = #8)
 	(($arg0@0) = #9)
 }
-fun fn1@X (arg2@6 : T@X)  {
+fun fn1 (arg2@6 : T)  {
 	(let var1@7 = #0)
 	(($var1@7) = ($var1@7 + #1))
 	(let var1@8 = ($var1@7 + #1))
 	(($var1@8) = ($var1@8 + #1))
 }
-fun fn2@X ()  {
-	(($not_declared@X) = #123)
+fun fn2 ()  {
+	(($not_declared@9) = #123)
 }
 
 ===

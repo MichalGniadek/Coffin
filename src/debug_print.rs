@@ -56,10 +56,7 @@ impl DebugPrint<'_, '_, '_> {
 
     fn name(&self, name: Name) -> String {
         let var_string = match self.variables {
-            Some(map) => match map.get(name.id) {
-                Some(var_id) => format!("@{}", usize::from(var_id)),
-                None => String::from("@X"),
-            },
+            Some(map) => format!("@{}", usize::from(map.var_id(name))),
             None => String::new(),
         };
         format!(
@@ -81,10 +78,11 @@ impl DebugPrint<'_, '_, '_> {
 
     fn field(&self, field: &Field) -> String {
         format!(
-            "{} {}: {}",
+            "{} {}: {}{}",
             self.name(field.name),
             self.span(field.colon_id),
-            self.name(field.ttpe)
+            self.span(field.ttpe.id),
+            self.ident(field.ttpe.spur),
         )
     }
 
@@ -118,7 +116,12 @@ impl DebugPrint<'_, '_, '_> {
         access
             .into_iter()
             .map(|a| match a {
-                AccessType::Dot(id, name) => format!(".{}{}", self.span(*id), self.name(*name)),
+                AccessType::Dot(id, name) => format!(
+                    ".{}{}{}",
+                    self.span(*id),
+                    self.span(name.id),
+                    self.ident(name.spur)
+                ),
                 AccessType::Index(brackets, expr) => {
                     format!("{}[{}]", self.span(*brackets), self.visit_expr(expr))
                 }
@@ -147,15 +150,21 @@ impl ItemVisitor for DebugPrint<'_, '_, '_> {
             .collect::<String>();
 
         let ret_text = match ret {
-            Some((id, name)) => format!("{}-> {}", self.span(*id), self.name(*name)),
+            Some((id, name)) => format!(
+                "{}-> {}{}",
+                self.span(*id),
+                self.span(name.id),
+                self.ident(name.spur),
+            ),
             None => String::new(),
         };
 
         format!(
-            "{}{}fun {} {}({}) {} {}",
+            "{}{}fun {}{} {}({}) {} {}",
             self.attrs(attrs),
             self.span(fun_id),
-            self.name(name),
+            self.span(name.id),
+            self.ident(name.spur),
             self.span(paren_id),
             params_text,
             ret_text,

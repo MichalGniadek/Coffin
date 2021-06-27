@@ -1,6 +1,6 @@
 use crate::{
     ast::{AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
-    error::CoffinError,
+    error::{CoffinError, InternalError},
     parser::spans_table::SpanTable,
 };
 use lasso::Spur;
@@ -25,6 +25,12 @@ pub fn visit(ast: &mut Ast) -> VariableTable {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VariableId(usize);
 
+impl VariableId {
+    pub fn new(i: usize) -> Self {
+        Self(i)
+    }
+}
+
 impl From<VariableId> for usize {
     fn from(id: VariableId) -> Self {
         id.0
@@ -43,17 +49,17 @@ impl VariableTable {
         VariableId(self.1)
     }
 
-    pub fn get(&self, id: Id) -> Option<VariableId> {
-        self.0.get(&id).cloned()
+    pub fn var_id(&self, name: Name) -> VariableId {
+        *self.0.get(&name.id).ie_expect("VariableId wasn't set.")
     }
 
-    fn insert(&mut self, id: Id, var_id: VariableId) {
+    fn set(&mut self, id: Id, var_id: VariableId) {
         self.0.insert(id, var_id);
     }
 
     fn new_variable(&mut self, id: Id) -> VariableId {
         self.1 += 1;
-        self.insert(id, VariableId(self.1 - 1));
+        self.set(id, VariableId(self.1 - 1));
         VariableId(self.1 - 1)
     }
 }
@@ -154,10 +160,12 @@ impl ExprVisitor for NameResolution<'_> {
         let found = scopes.find_map(|scope| scope.get(&name.spur));
 
         match found {
-            Some(&var_id) => self.variables.insert(name.id, var_id),
-            None => self
-                .errors
-                .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone())),
+            Some(&var_id) => self.variables.set(name.id, var_id),
+            None => {
+                self.errors
+                    .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone()));
+                self.new_variable(name)
+            }
         }
     }
 

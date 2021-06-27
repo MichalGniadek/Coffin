@@ -3,23 +3,23 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-unif img@0 : image2d@X
-fun f@X (a@1 : float4@X)  {
-	($a@1: vector).xyzw@X
-	($a@1: vector).xxx@X
-	($a@1: vector).yx@X
-	($a@1: vector).w@X
+unif img@0 : image2d
+fun f (a@1 : float4)  {
+	($a@1: vector).xyzw
+	($a@1: vector).xxx
+	($a@1: vector).yx
+	($a@1: vector).w
 	($a@1: vector)[#3: int]
 	($a@1: vector)[#0: int]
 	(($img@0: image)[#123: int] = $a@1: vector): void
 	($img@0: image)[#123: int]
-	($a@1: vector).xyaw@X
-	($a@1: vector).b@X
+	($a@1: vector).xyaw
+	($a@1: vector).b
 	($a@1: vector)[#4: int]
 	($a@1: vector)[$a@1: vector]
-	($a@1: vector).x@X.x@X
-	(($a@1: vector).x@X = ($a@1: vector).y@X): void
-	($img@0: image).asd@X
+	($a@1: vector).x.x
+	(($a@1: vector).x = ($a@1: vector).y): void
+	($img@0: image).asd
 }: error
 
 ===

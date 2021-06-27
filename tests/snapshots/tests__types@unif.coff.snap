@@ -3,9 +3,9 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-unif a@0 : int@X
-unif b@1 : int@X
-fun a@X (a@2 : void@X)  {
+unif a@0 : int
+unif b@1 : int
+fun a (a@2 : void)  {
 	$a@2: void
 	$b@1: int
 }: int

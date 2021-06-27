@@ -1,6 +1,6 @@
 pub mod types;
 
-use self::types::{Type, TypeId, TypeTable, VariableTypes};
+use self::types::{Type, TypeId, TypeTable};
 use crate::{
     ast::{self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     ast_span,
@@ -15,8 +15,8 @@ use rspirv::spirv::StorageClass;
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
     let mut tr = TypeResolution {
-        variables: VariableTypes::new(variables),
-        types: TypeTable::new(ast.max_id()),
+        variables,
+        types: TypeTable::new(ast.max_id(), variables.max_var_id()),
 
         rodeo: &ast.rodeo,
         spans: &ast.spans,
@@ -32,7 +32,7 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable) -> TypeTable {
 }
 
 struct TypeResolution<'ast, 'vars> {
-    variables: VariableTypes<'vars>,
+    variables: &'vars VariableTable,
     types: TypeTable,
 
     rodeo: &'ast RodeoReader,
@@ -172,8 +172,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                     .types
                     .new_type(Type::Pointer(StorageClass::Function, type_id));
 
-                self.variables
-                    .set_variable_type_id(field.name, pointer_type);
+                let var_id = self.variables.var_id(field.name);
+                self.types.set_var_type_id(var_id, pointer_type);
             }
         } else if compute.len() == 1 {
             if params.len() != 1 {
@@ -200,8 +200,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                 .types
                 .new_type(Type::Pointer(StorageClass::Input, type_id));
 
-            self.variables
-                .set_variable_type_id(id_param.name, pointer_type);
+            let var_id = self.variables.var_id(id_param.name);
+            self.types.set_var_type_id(var_id, pointer_type);
         } else if compute.len() > 1 {
             self.errors.push(CoffinError::MoreThanOneAttribute(
                 "compute".into(),
@@ -231,11 +231,11 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             .types
             .new_type(Type::Pointer(StorageClass::UniformConstant, type_id));
 
-        self.variables
-            .set_variable_type_id(field.name, pointer_type);
+        let var_id = self.variables.var_id(field.name);
+        self.types.set_var_type_id(var_id, pointer_type);
 
-        self.types.set_type_id(unif_id, pointer_type);
-        pointer_type
+        self.types.set_type_id(unif_id, TypeTable::VOID_ID);
+        TypeTable::VOID_ID
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
@@ -292,7 +292,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             .types
             .new_type(Type::Pointer(StorageClass::Function, expr_id));
 
-        self.variables.set_variable_type_id(name, pointer_type);
+        let var_id = self.variables.var_id(name);
+        self.types.set_var_type_id(var_id, pointer_type);
 
         self.types.set_type_id(let_id, TypeTable::VOID_ID);
         TypeTable::VOID_ID
@@ -310,7 +311,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
         let mut var_type_id = self.visit_expr(left);
         if let Expr::Identifier(name) = left {
-            var_type_id = self.variables[*name]
+            let var_id = self.variables.var_id(*name);
+            var_type_id = self.types.var_type_id(var_id);
         }
 
         let var_type_id = if let Type::Pointer(_, type_id) = &self.types[var_type_id] {
@@ -338,7 +340,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        let pointer_id = self.variables[name];
+        let var_id = self.variables.var_id(name);
+        let pointer_id = self.types.var_type_id(var_id);
         let type_id = match self.types[pointer_id] {
             Type::Pointer(_, type_id) => type_id,
             Type::Error => TypeTable::ERROR_ID,

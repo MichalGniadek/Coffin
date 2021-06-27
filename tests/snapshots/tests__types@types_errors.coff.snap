@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun a@X (arg1@0 : NonExistant@X, arg2@1 : int@X)  {
+fun a (arg1@0 : NonExistant, arg2@1 : int)  {
 	(($arg2@1: int) = {
 		(#2: int + #2: int): int
 	}: int): void

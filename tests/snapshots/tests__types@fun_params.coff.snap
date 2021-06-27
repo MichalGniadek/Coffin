@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun asd@X (a@0 : int@X, b@1 : int@X)  {
+fun asd (a@0 : int, b@1 : int)  {
 	(($a@0: int) = #3: int): void
 	(($b@1: int) = #5: int): void
 }: void

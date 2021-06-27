@@ -1,14 +1,12 @@
-mod variable_spirv_ids;
+mod spirv_ids_collections;
 
-use self::variable_spirv_ids::VariableSpirvIds;
 use crate::{
     ast::{
         AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name,
     },
-    error::{internal_error, CoffinError, InternalError},
+    error::{internal_error, InternalError},
     lexer::Token,
     name_resolution::VariableTable,
-    parser::spans_table::SpanTable,
     type_resolution::types::{Type, TypeId, TypeTable},
 };
 use lasso::RodeoReader;
@@ -16,7 +14,7 @@ use rspirv::{
     dr::{self, Builder, Module},
     spirv,
 };
-use std::collections::HashMap;
+use spirv_ids_collections::{TypeSpirvIds, VariableSpirvIds};
 
 pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Result<Module, ()> {
     // You can't generate code if there are any errors
@@ -25,17 +23,17 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
     }
 
     let mut spirv = SpirvGen {
-        variables: VariableSpirvIds::new(variables),
+        variables,
+        spirv_vars: VariableSpirvIds::new(variables),
+
         types,
-        spirv_types: HashMap::new(),
+        spirv_types: TypeSpirvIds::new(types),
+
         rodeo: &ast.rodeo,
 
-        // Will be filled durgina a prepass
+        // Will be filled during a prepass
         uniforms: vec![],
         code: Builder::new(),
-
-        _spans: &ast.spans,
-        errors: &mut ast.errors,
     };
 
     spirv.code.set_version(1, 5);
@@ -71,31 +69,25 @@ pub fn visit(ast: &mut Ast, variables: &VariableTable, types: &TypeTable) -> Res
         }
     }
 
-    if !spirv.errors.is_empty() {
-        return Err(());
-    }
-
     Ok(spirv.code.module())
 }
 
 struct SpirvGen<'ast, 'vars, 'types> {
-    variables: VariableSpirvIds<'vars>,
+    variables: &'vars VariableTable,
+    spirv_vars: VariableSpirvIds,
+
     types: &'types TypeTable,
-    spirv_types: HashMap<TypeId, u32>,
+    spirv_types: TypeSpirvIds,
+
     rodeo: &'ast RodeoReader,
 
     uniforms: Vec<u32>,
     code: Builder,
-
-    _spans: &'ast SpanTable,
-    errors: &'ast mut Vec<CoffinError>,
 }
 
 impl SpirvGen<'_, '_, '_> {
     fn type_id_to_spirv_id(&mut self, type_id: TypeId) -> u32 {
-        if let Some(id) = self.spirv_types.get(&type_id) {
-            *id
-        } else {
+        if self.spirv_types[type_id] == 0 {
             // Spirv type hasn't been created it, so create it.
             let ttpe = &self.types[type_id];
 
@@ -140,10 +132,9 @@ impl SpirvGen<'_, '_, '_> {
                 }
             };
 
-            // Cache it
-            self.spirv_types.insert(type_id, spirv_id);
-            spirv_id
+            self.spirv_types[type_id] = spirv_id;
         }
+        self.spirv_types[type_id]
     }
 }
 
@@ -175,37 +166,27 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         )?;
 
         let compute = attrs.get_attr(self.rodeo.get("compute"));
-        if compute.len() > 1 {
-            todo!("More than one compute attribute")
-        } else if compute.len() == 1 {
+        if compute.len() == 1 {
             let compute = compute[0];
 
-            if params.len() == 0 {
-                todo!("Compute shader function must have one parameter of type Id");
-            } else if params.len() > 1 {
-                todo!("Compute shader function must have one parameter of type Id");
-            } else {
-                // Next lines are very hacky. Less hacky solution would be to store the type in colon id in a field.
-                // Probably still to hacky. Best solution is to make it possible to get types of variables in spirv gen.
-                let spirv_type_id = self.type_id_to_spirv_id(TypeTable::ID_ID);
-                let pointer_type_id =
-                    self.code
-                        .type_pointer(None, spirv::StorageClass::Input, spirv_type_id);
-                let id_param =
-                    self.code
-                        .variable(pointer_type_id, None, spirv::StorageClass::Input, None);
+            // Checked by type resolution
+            let id_param = params[0];
+            let var_id = self.variables.var_id(id_param.name);
+            let type_id = self.types.var_type_id(var_id);
+            let spirv_type_id = self.type_id_to_spirv_id(type_id);
+            let id_param =
+                self.code
+                    .variable(spirv_type_id, None, spirv::StorageClass::Input, None);
 
-                self.variables
-                    .set_variable_spirv_id(params[0].name, id_param);
+            self.spirv_vars[var_id] = id_param;
 
-                self.code.decorate(
-                    id_param,
-                    spirv::Decoration::BuiltIn,
-                    [dr::Operand::BuiltIn(spirv::BuiltIn::GlobalInvocationId)],
-                );
+            self.code.decorate(
+                id_param,
+                spirv::Decoration::BuiltIn,
+                [dr::Operand::BuiltIn(spirv::BuiltIn::GlobalInvocationId)],
+            );
 
-                self.uniforms.push(id_param);
-            }
+            self.uniforms.push(id_param);
 
             self.code.entry_point(
                 spirv::ExecutionModel::GLCompute,
@@ -239,12 +220,13 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         Ok(fun_spirv_id)
     }
 
-    fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
-        let pointer_id = self.type_id_to_spirv_id(self.types.type_id(unif_id));
+    fn uniform(&mut self, _unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
+        let var_id = self.variables.var_id(field.name);
+        let pointer_id = self.type_id_to_spirv_id(self.types.var_type_id(var_id));
         let var = self
             .code
             .variable(pointer_id, None, spirv::StorageClass::UniformConstant, None);
-        self.variables.set_variable_spirv_id(field.name, var);
+        self.spirv_vars[var_id] = var;
 
         let binding = attrs.get_attr(self.rodeo.get("binding"));
         if binding.len() != 1 {
@@ -296,17 +278,18 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
 
     fn let_declaration(
         &mut self,
-        let_id: Id,
+        _let_id: Id,
         _mut_id: Option<Id>,
         name: Name,
         _eq_id: Id,
         expr: &Expr,
     ) -> Self::Out {
-        let pointer_id = self.type_id_to_spirv_id(self.types.type_id(let_id));
+        let var_id = self.variables.var_id(name);
+        let pointer_id = self.type_id_to_spirv_id(self.types.var_type_id(var_id));
         let var = self
             .code
             .variable(pointer_id, None, spirv::StorageClass::UniformConstant, None);
-        self.variables.set_variable_spirv_id(name, var);
+        self.spirv_vars[var_id] = var;
 
         let id = self.visit_expr(expr)?;
         self.code.store(var, id, None, &[])?;
@@ -383,7 +366,8 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     fn identifier(&mut self, name: Name) -> Self::Out {
         let type_id = self.types.type_id(name.id);
         let type_id = self.type_id_to_spirv_id(type_id);
-        let var = self.variables[name];
+        let var_id = self.variables.var_id(name);
+        let var = self.spirv_vars[var_id];
         self.code.load(type_id, None, var, None, [])
     }
 

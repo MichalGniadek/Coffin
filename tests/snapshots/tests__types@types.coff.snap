@@ -3,7 +3,7 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun a@X ()  {
+fun a ()  {
 	(let a@0 = #3: int): void
 	(let b@1 = ($a@0: int + #5: int): int): void
 	(let c@2 = {

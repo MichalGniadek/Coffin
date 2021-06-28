@@ -138,12 +138,16 @@ name = "coffin2"
 version = "0.1.0"
 dependencies = [
  "codespan-reporting",
+ "globset 0.3.0",
+ "image",
  "insta",
  "lasso",
  "logos",
  "rspirv",
  "spirv-tools",
  "structopt",
+ "vulkano",
+ "vulkano-shaders",
 ]
 
 [[package]]
@@ -1164,17 +1168,6 @@ name = "vk-sys"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e7b00b858d5a65e4272e3dfd83f795a31467ba67425d853f32b966a09c907"
-
-[[package]]
-name = "vulkan_tests"
-version = "0.1.0"
-dependencies = [
- "coffin2",
- "globset 0.3.0",
- "image",
- "vulkano",
- "vulkano-shaders",
-]
 
 [[package]]
 name = "vulkano"

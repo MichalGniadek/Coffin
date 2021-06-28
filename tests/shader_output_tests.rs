@@ -1,6 +1,6 @@
 use globset::Glob;
 use image::io::Reader as ImageReader;
-use image::{GenericImageView, ImageBuffer, Rgba};
+use image::{ImageBuffer, Rgba};
 use std::path::PathBuf;
 use std::sync::Arc;
 use vulkano::{
@@ -12,65 +12,55 @@ use vulkano::{
 fn compute() {
     let glob = Glob::new("*.coff").unwrap().compile_matcher();
     let mut test_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    test_folder.push("shaders");
+    test_folder.push("tests/shaders");
 
     for entry in test_folder.read_dir().unwrap() {
         let entry = entry.unwrap();
 
         if entry.file_type().unwrap().is_file() && glob.is_match(entry.file_name()) {
             let src = coffin2::compile_file(&entry.path()).unwrap();
-
-            let buf = test_shader(&src);
-            let new_image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buf[..]).unwrap();
+            let new_image = test_shader(&src);
 
             let img_path = entry.path().with_extension("png");
             let old_image = match ImageReader::open(&img_path) {
-                Ok(img) => img.decode().unwrap(),
+                Ok(img) => match img.decode().unwrap() {
+                    image::DynamicImage::ImageRgba8(img) => img,
+                    _ => panic!(),
+                },
                 Err(_) => {
                     new_image.save(img_path.as_path()).unwrap();
                     continue;
                 }
             };
 
-            for (a, (x, y, b)) in new_image.pixels().zip(old_image.pixels()) {
-                if *a != b {
-                    new_image
-                        .save(img_path.with_extension("new.png").as_path())
-                        .unwrap();
-                    panic!(
-                        "Different pixel at ({}, {}) from '{}'",
-                        x,
-                        y,
-                        entry.file_name().to_str().unwrap()
-                    )
-                }
+            if new_image != old_image {
+                new_image
+                    .save(img_path.with_extension("new.png").as_path())
+                    .unwrap();
+                panic!(
+                    "Different images from '{}'",
+                    entry.file_name().to_str().unwrap()
+                );
             }
         }
     }
 }
 
+#[allow(unsafe_code)]
 mod vulkan_img_shader {
     use std::{ffi::CStr, sync::Arc};
     use vulkano::{
-        descriptor::{
-            descriptor::{
-                DescriptorDesc, DescriptorDescTy, DescriptorImageDesc, DescriptorImageDescArray,
-                DescriptorImageDescDimensions, ShaderStages,
-            },
-            pipeline_layout::{PipelineLayoutDesc, PipelineLayoutDescPcRange},
-        },
+        descriptor::{descriptor::*, pipeline_layout::*},
         device::Device,
-        pipeline::shader::{ComputeEntryPoint, ShaderModule},
+        pipeline::shader::*,
         OomError,
     };
 
     pub struct Shader {
         shader: Arc<ShaderModule>,
     }
-    #[allow(unsafe_code)]
-    impl Shader {
-        #[doc = r" Loads the shader in Vulkan as a `ShaderModule`."]
 
+    impl Shader {
         pub fn load(device: Arc<Device>, words: &[u32]) -> Result<Shader, OomError> {
             unsafe {
                 Ok(Shader {
@@ -79,7 +69,6 @@ mod vulkan_img_shader {
             }
         }
 
-        #[doc = r" Returns a logical struct describing the entry point named `{ep_name}`."]
         pub fn main_entry_point(&self) -> ComputeEntryPoint<(), Layout> {
             unsafe {
                 static NAME: [u8; 5usize] = [109u8, 97u8, 105u8, 110u8, 0];
@@ -97,7 +86,6 @@ mod vulkan_img_shader {
     #[derive(Debug, Clone)]
     pub struct Layout(pub ShaderStages);
 
-    #[allow(unsafe_code)]
     unsafe impl PipelineLayoutDesc for Layout {
         fn num_sets(&self) -> usize {
             1usize
@@ -146,18 +134,16 @@ mod vulkan_img_shader {
     }
 }
 
-fn test_shader(src: &[u32]) -> Vec<u8> {
+fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let instance =
         Instance::new(None, &InstanceExtensions::none(), None).expect("failed to create instance");
 
-    let physical = PhysicalDevice::enumerate(&instance)
-        .next()
-        .expect("no device available");
+    let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
 
     let queue_family = physical
         .queue_families()
         .find(|&q| q.supports_compute())
-        .expect("couldn't find a graphical queue family");
+        .unwrap();
 
     let (device, mut queues) = {
         Device::new(
@@ -166,7 +152,7 @@ fn test_shader(src: &[u32]) -> Vec<u8> {
             &DeviceExtensions::none(),
             [(queue_family, 0.5)].iter().cloned(),
         )
-        .expect("failed to create device")
+        .unwrap()
     };
 
     let queue = queues.next().unwrap();
@@ -182,12 +168,10 @@ fn test_shader(src: &[u32]) -> Vec<u8> {
     )
     .unwrap();
 
-    let shader = vulkan_img_shader::Shader::load(device.clone(), src)
-        .expect("failed to create shader module");
+    let shader = vulkan_img_shader::Shader::load(device.clone(), src).unwrap();
 
     let compute_pipeline = Arc::new(
-        ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None)
-            .expect("failed to create compute pipeline"),
+        ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
     );
 
     let set = Arc::new(
@@ -210,7 +194,7 @@ fn test_shader(src: &[u32]) -> Vec<u8> {
         false,
         (0..1024 * 1024 * 4).map(|_| 0u8),
     )
-    .expect("failed to create buffer");
+    .unwrap();
 
     let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
     builder
@@ -233,5 +217,6 @@ fn test_shader(src: &[u32]) -> Vec<u8> {
         .wait(None)
         .unwrap();
 
-    return buf.read().unwrap().to_owned();
+    let buf = buf.read().unwrap().to_owned();
+    ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(1024, 1024, buf).unwrap()
 }

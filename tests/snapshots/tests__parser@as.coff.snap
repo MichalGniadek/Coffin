@@ -1,0 +1,11 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, false)"
+
+---
+fun f ()  {
+	((#1 as int) + #2)
+	((#1 as int) as float)
+}
+
+===

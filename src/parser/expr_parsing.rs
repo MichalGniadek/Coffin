@@ -46,11 +46,6 @@ impl Parser<'_> {
             PanicMode(e) => return PanicMode(e),
         };
 
-        let expr = match self.parse_sufix(expr) {
-            Correct(e) => e,
-            PanicMode(e) => return PanicMode(e),
-        };
-
         Correct(expr)
     }
 
@@ -145,20 +140,21 @@ impl Parser<'_> {
             Assign,
             DotAccess,
             IndexAccess,
+            Conversion,
         }
-        use InfixType::{Assign, Binary, DotAccess, IndexAccess};
 
         loop {
             let (binding_power, assoc, kind) = match self.curr_token {
-                Token::Equal => (5, RIGHT, Assign),
-                Token::Plus => (10, LEFT, Binary(BinOpKind::Add)),
-                Token::Minus => (10, LEFT, Binary(BinOpKind::Sub)),
-                Token::Star => (20, LEFT, Binary(BinOpKind::Mul)),
-                Token::Slash => (20, LEFT, Binary(BinOpKind::Div)),
-                Token::Percent => (20, LEFT, Binary(BinOpKind::Rem)),
-                Token::DoubleStar => (30, RIGHT, Binary(BinOpKind::Pow)),
-                Token::Dot => (200, LEFT, DotAccess),
-                Token::LeftBracket => (200, LEFT, IndexAccess),
+                Token::Equal => (5, RIGHT, InfixType::Assign),
+                Token::Plus => (10, LEFT, InfixType::Binary(BinOpKind::Add)),
+                Token::Minus => (10, LEFT, InfixType::Binary(BinOpKind::Sub)),
+                Token::Star => (20, LEFT, InfixType::Binary(BinOpKind::Mul)),
+                Token::Slash => (20, LEFT, InfixType::Binary(BinOpKind::Div)),
+                Token::Percent => (20, LEFT, InfixType::Binary(BinOpKind::Rem)),
+                Token::DoubleStar => (30, RIGHT, InfixType::Binary(BinOpKind::Pow)),
+                Token::Dot => (200, LEFT, InfixType::DotAccess),
+                Token::LeftBracket => (200, LEFT, InfixType::IndexAccess),
+                Token::As => (1, LEFT, InfixType::Conversion),
                 Token::LeftParen => {
                     todo!("Function call operator not implemented.")
                 }
@@ -167,7 +163,7 @@ impl Parser<'_> {
 
             if binding_power + assoc > min_binding_power {
                 match kind {
-                    Binary(kind) => {
+                    InfixType::Binary(kind) => {
                         let id = self.consume();
                         let (right, is_panic) = self.parse_expr(Some(binding_power)).destruct();
                         left = Expr::Binary(id, kind, Box::new(left), Box::new(right));
@@ -175,7 +171,7 @@ impl Parser<'_> {
                             return PanicMode(left);
                         }
                     }
-                    Assign => {
+                    InfixType::Assign => {
                         let id = self.consume();
                         let (right, is_panic) = self.parse_expr(None).destruct();
 
@@ -204,7 +200,7 @@ impl Parser<'_> {
                             return PanicMode(left);
                         }
                     }
-                    DotAccess => {
+                    InfixType::DotAccess => {
                         let id = self.consume();
                         let member = match self.curr_token {
                             Token::Identifier(spur) => Name {
@@ -231,7 +227,7 @@ impl Parser<'_> {
                             }
                         }
                     }
-                    IndexAccess => {
+                    InfixType::IndexAccess => {
                         let id = self.consume();
                         let (right, is_panic) = self.parse_expr(None).destruct();
                         if !is_panic {
@@ -254,6 +250,24 @@ impl Parser<'_> {
                             return PanicMode(left);
                         }
                     }
+                    InfixType::Conversion => {
+                        let id = self.consume();
+                        let name = match self.curr_token {
+                            Token::Identifier(spur) => Name {
+                                id: self.consume(),
+                                spur,
+                            },
+                            _ => {
+                                return self.err_consume(
+                                    id,
+                                    ParserErrorKind::expected_identifier(),
+                                    None,
+                                    &Self::EXPR_SYNC,
+                                )
+                            }
+                        };
+                        left = Expr::Convert(id, Box::new(left), name);
+                    }
                 }
             } else {
                 break;
@@ -261,29 +275,5 @@ impl Parser<'_> {
         }
 
         Correct(left)
-    }
-
-    fn parse_sufix(&mut self, left: Expr) -> ExprResult {
-        match self.curr_token {
-            Token::As => {
-                let id = self.consume();
-                let name = match self.curr_token {
-                    Token::Identifier(spur) => Name {
-                        id: self.consume(),
-                        spur,
-                    },
-                    _ => {
-                        return self.err_consume(
-                            id,
-                            ParserErrorKind::expected_identifier(),
-                            None,
-                            &Self::EXPR_SYNC,
-                        )
-                    }
-                };
-                Correct(Expr::Convert(id, Box::new(left), name))
-            }
-            _ => Correct(left),
-        }
     }
 }

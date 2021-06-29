@@ -3,30 +3,33 @@ source: tests/tests.rs
 expression: "test_util(path, false, true, false)"
 
 ---
-fun fn0 (arg0@0 : T, arg1@1 : T)  {
-	(let var0@2 = #0)
-	(($var0@2) = $arg0@0)
+fun fn0@0 (arg0@1 : T@X, arg1@2 : T@X)  {
+	(let var0@3 = #0)
+	(($var0@3) = $arg0@1)
 	{
-		(($arg0@0) = #1)
-		(let arg0@3 = #2)
-		(($arg0@3) = #3)
+		(($arg0@1) = #1)
+		(let arg0@4 = #2)
+		(($arg0@4) = #3)
 	}
-	(($arg0@0) = #4)
-	(let var1@4 = #5)
-	(($var1@4) = #6)
-	(let var1@5 = #7)
-	(($var1@5) = #8)
-	(($arg0@0) = #9)
+	(($arg0@1) = #4)
+	(let var1@5 = #5)
+	(($var1@5) = #6)
+	(let var1@6 = #7)
+	(($var1@6) = #8)
+	(($arg0@1) = #9)
 }
-fun fn1 (arg2@6 : T)  {
-	(let var1@7 = #0)
-	(($var1@7) = ($var1@7 + #1))
-	(let var1@8 = ($var1@7 + #1))
-	(($var1@8) = ($var1@8 + #1))
+fun fn1@7 (arg2@8 : T@X)  {
+	(let var1@9 = #0)
+	(($var1@9) = ($var1@9 + #1))
+	(let var1@10 = ($var1@9 + #1))
+	(($var1@10) = ($var1@10 + #1))
 }
-fun fn2 ()  {
-	(($not_declared@9) = #123)
+fun fn2@11 ()  {
+	(($not_declared@12) = #123)
 }
 
 ===
+Undeclared type. [14..15]
+Undeclared type. [23..24]
+Undeclared type. [246..247]
 Undeclared variable. [357..369]

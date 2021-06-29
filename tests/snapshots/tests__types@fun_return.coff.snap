@@ -3,10 +3,10 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun a () -> void {
+fun a@0 () -> void@T1 {
 	
 }: void
-fun b () -> Undeclared {
+fun b@1 () -> Undeclared@X {
 	
 }: void
 

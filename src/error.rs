@@ -173,11 +173,11 @@ pub fn internal_error(msg: &str) -> ! {
 }
 
 pub trait InternalError<T> {
-    fn ie_expect(self, msg: &str) -> T;
+    fn ice_expect(self, msg: &str) -> T;
 }
 
 impl<T> InternalError<T> for Option<T> {
-    fn ie_expect(self, msg: &str) -> T {
+    fn ice_expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
             None => internal_error(msg),

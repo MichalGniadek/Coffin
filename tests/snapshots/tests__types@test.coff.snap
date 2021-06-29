@@ -1,0 +1,11 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, true)"
+
+---
+#[binding@X('(' Int ')')]unif img@0 : image2d@T17
+#[compute@X('(' Int ',' Int ',' Int ')')]fun main@1 (id@2 : Id@T11)  {
+	(($img@0: image)[(($id@2: vector).xy as int2@T6): vector] = (($id@2: vector).xxzx as float4@T16): vector): void
+}: void
+
+===

@@ -3,9 +3,9 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun asd (a@0 : int, b@1 : int)  {
-	(($a@0: int) = #3: int): void
-	(($b@1: int) = #5: int): void
+fun asd@0 (a@1 : int@T2, b@2 : int@T2)  {
+	(($a@1: int) = #3: int): void
+	(($b@2: int) = #5: int): void
 }: void
 
 ===

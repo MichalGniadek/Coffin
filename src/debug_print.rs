@@ -2,8 +2,9 @@ use crate::{
     ast::{
         AccessType, Ast, Attr, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name,
     },
-    name_resolution::VariableTable,
+    name_resolution::NameTable,
     parser::spans_table::SpanTable,
+    type_id::builtin_types,
     type_resolution::types::TypeTable,
 };
 use lasso::{RodeoReader, Spur};
@@ -12,12 +13,12 @@ use std::iter;
 pub fn visit(
     ast: &Ast,
     spans: bool,
-    variables: Option<&VariableTable>,
+    variables: Option<&NameTable>,
     types: Option<&TypeTable>,
 ) -> String {
     let mut slf = DebugPrint {
         rodeo: &ast.rodeo,
-        variables,
+        names: variables,
         spans: if spans { Some(&ast.spans) } else { None },
         types,
         indent: String::from('\n'),
@@ -35,7 +36,7 @@ pub fn visit(
 pub struct DebugPrint<'ast, 'vars, 'types> {
     rodeo: &'ast RodeoReader,
     spans: Option<&'ast SpanTable>,
-    variables: Option<&'vars VariableTable>,
+    names: Option<&'vars NameTable>,
     types: Option<&'types TypeTable>,
     indent: String,
 }
@@ -51,8 +52,12 @@ impl DebugPrint<'_, '_, '_> {
     }
 
     fn name(&self, name: Name) -> String {
-        let var_string = match self.variables {
-            Some(map) => format!("@{}", usize::from(map.var_id(name))),
+        let var_string = match self.names {
+            Some(map) => match (map.var_id(name), map.type_id(name)) {
+                (Some(id), _) => format!("@{}", usize::from(id)),
+                (_, id) if id != builtin_types::ERROR_ID => format!("@T{}", usize::from(id)),
+                _ => format!("@X"),
+            },
             None => String::new(),
         };
         format!(
@@ -74,11 +79,10 @@ impl DebugPrint<'_, '_, '_> {
 
     fn field(&self, field: &Field) -> String {
         format!(
-            "{} {}: {}{}",
+            "{} {}: {}",
             self.name(field.name),
             self.span(field.colon_id),
-            self.span(field.ttpe.id),
-            self.ident(field.ttpe.spur),
+            self.name(field.ttpe),
         )
     }
 
@@ -146,21 +150,15 @@ impl ItemVisitor for DebugPrint<'_, '_, '_> {
             .collect::<String>();
 
         let ret_text = match ret {
-            Some((id, name)) => format!(
-                "{}-> {}{}",
-                self.span(*id),
-                self.span(name.id),
-                self.ident(name.spur),
-            ),
+            Some((id, name)) => format!("{}-> {}", self.span(*id), self.name(*name),),
             None => String::new(),
         };
 
         format!(
-            "{}{}fun {}{} {}({}) {} {}",
+            "{}{}fun {} {}({}) {} {}",
             self.attrs(attrs),
             self.span(fun_id),
-            self.span(name.id),
-            self.ident(name.spur),
+            self.name(name),
             self.span(paren_id),
             params_text,
             ret_text,

@@ -3,12 +3,12 @@ source: tests/tests.rs
 expression: "test_util(path, false, false, true)"
 
 ---
-fun a (arg1@0 : NonExistant, arg2@1 : int)  {
-	(($arg2@1: int) = {
+fun a@0 (arg1@1 : NonExistant@X, arg2@2 : int@T2)  {
+	(($arg2@2: int) = {
 		(#2: int + #2: int): int
 	}: int): void
-	(($arg2@1: int) = {
-		(($arg2@1: int) = #3: int): void
+	(($arg2@2: int) = {
+		(($arg2@2: int) = #3: int): void
 	}: void): void
 	(#3: int + {
 		

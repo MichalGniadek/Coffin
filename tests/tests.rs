@@ -21,10 +21,7 @@ fn test_util(path: &Path, spans: bool, variables: bool, types: bool) -> String {
     } else {
         None
     };
-
-    // let _module = spirv_generation::visit(&mut ast, &vars, &type_table);
-
-    debug_print::visit(&ast, true, spans, variables.as_ref(), types.as_ref())
+    debug_print::visit(&ast, spans, variables.as_ref(), types.as_ref())
 }
 
 #[test]

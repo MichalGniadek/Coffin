@@ -388,6 +388,10 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
+    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
+        todo!()
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         self.types.set_type_id(id, TypeTable::ERROR_ID);
         TypeTable::ERROR_ID

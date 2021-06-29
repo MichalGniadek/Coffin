@@ -11,13 +11,12 @@ use std::iter;
 
 pub fn visit(
     ast: &Ast,
-    rodeo: bool,
     spans: bool,
     variables: Option<&VariableTable>,
     types: Option<&TypeTable>,
 ) -> String {
     let mut slf = DebugPrint {
-        rodeo: if rodeo { Some(&ast.rodeo) } else { None },
+        rodeo: &ast.rodeo,
         variables,
         spans: if spans { Some(&ast.spans) } else { None },
         types,
@@ -29,12 +28,12 @@ pub fn visit(
         .map(|i| slf.visit_item(i))
         .chain(iter::once(String::from("\n===")))
         .chain(ast.errors.iter().map(|err| format!("{}", err)))
-        .intersperse(String::from('\n'))
+        .intersperse('\n'.into())
         .collect()
 }
 
 pub struct DebugPrint<'ast, 'vars, 'types> {
-    rodeo: Option<&'ast RodeoReader>,
+    rodeo: &'ast RodeoReader,
     spans: Option<&'ast SpanTable>,
     variables: Option<&'vars VariableTable>,
     types: Option<&'types TypeTable>,
@@ -48,10 +47,7 @@ impl DebugPrint<'_, '_, '_> {
     }
 
     fn ident(&self, spur: Spur) -> String {
-        match self.rodeo {
-            Some(r) => r.resolve(&spur).to_owned(),
-            None => format!("{:?}", spur),
-        }
+        self.rodeo.resolve(&spur).to_owned()
     }
 
     fn name(&self, name: Name) -> String {
@@ -100,10 +96,10 @@ impl DebugPrint<'_, '_, '_> {
                             tokens
                                 .iter()
                                 .map(|(id, t)| format!("{}{}", self.span(*id), t))
-                                .intersperse(String::from(' '))
+                                .intersperse(' '.into())
                                 .collect::<String>()
                         ))
-                        .intersperse(String::from(", "))
+                        .intersperse(", ".into())
                         .collect::<String>()
                 )
             }
@@ -146,7 +142,7 @@ impl ItemVisitor for DebugPrint<'_, '_, '_> {
         let params_text = params
             .iter()
             .map(|f| self.field(f))
-            .intersperse(String::from(", "))
+            .intersperse(", ".into())
             .collect::<String>();
 
         let ret_text = match ret {
@@ -280,6 +276,18 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
             self.span(id),
             self.name(ttpe),
             self.ttpe(id),
+        )
+    }
+
+    fn call(&mut self, id: Id, expr: &Expr, args: &Vec<Expr>) -> Self::Out {
+        format!(
+            "({}{}({}))",
+            self.visit_expr(expr),
+            self.span(id),
+            args.iter()
+                .map(|e| self.visit_expr(e))
+                .intersperse(", ".into())
+                .collect::<String>()
         )
     }
 

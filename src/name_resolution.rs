@@ -184,5 +184,9 @@ impl ExprVisitor for NameResolution<'_> {
         self.visit_expr(expr)
     }
 
+    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
+        todo!()
+    }
+
     fn expr_error(&mut self, _id: Id) -> Self::Out {}
 }

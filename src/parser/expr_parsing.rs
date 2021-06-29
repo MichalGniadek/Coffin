@@ -141,6 +141,7 @@ impl Parser<'_> {
             DotAccess,
             IndexAccess,
             Conversion,
+            Call,
         }
 
         loop {
@@ -155,9 +156,7 @@ impl Parser<'_> {
                 Token::Dot => (200, LEFT, InfixType::DotAccess),
                 Token::LeftBracket => (200, LEFT, InfixType::IndexAccess),
                 Token::As => (1, LEFT, InfixType::Conversion),
-                Token::LeftParen => {
-                    todo!("Function call operator not implemented.")
-                }
+                Token::LeftParen => (1, LEFT, InfixType::Call),
                 _ => break,
             };
 
@@ -267,6 +266,36 @@ impl Parser<'_> {
                             }
                         };
                         left = Expr::Convert(id, Box::new(left), name);
+                    }
+                    InfixType::Call => {
+                        let id = self.consume();
+
+                        let mut args = vec![];
+
+                        while self.curr_token != Token::RightParen {
+                            let (expr, is_panic) = self.parse_expr(None).destruct();
+
+                            args.push(expr);
+
+                            if is_panic {
+                                return PanicMode(Expr::Call(id, Box::new(left), args));
+                            }
+
+                            if self.curr_token == Token::Comma {
+                                self.skip();
+                            } else if self.curr_token != Token::RightParen {
+                                return self.err_consume(
+                                    id,
+                                    ParserErrorKind::ExpectedToken(Token::RightParen),
+                                    None,
+                                    &Self::EXPR_SYNC,
+                                );
+                            }
+                        }
+
+                        self.spans[id].end = self.skip().end;
+
+                        left = Expr::Call(id, Box::new(left), args);
                     }
                 }
             } else {

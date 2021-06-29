@@ -409,6 +409,10 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
+    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
+        todo!()
+    }
+
     fn expr_error(&mut self, _id: Id) -> Self::Out {
         internal_error("Spirv generation shouldn't be called with errors.")
     }

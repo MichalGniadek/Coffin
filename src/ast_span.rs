@@ -108,6 +108,10 @@ impl ExprVisitor for SpanGetter<'_> {
         self.visit_expr(expr).start..self.0[ttpe.id].end
     }
 
+    fn call(&mut self, id: Id, expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
+        self.visit_expr(expr).start..self.0[id].end
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }

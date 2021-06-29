@@ -57,7 +57,7 @@ fn main() {
     if opt.print {
         println!(
             "{}",
-            debug_print::visit(&ast, true, false, Some(&variables), Some(&types))
+            debug_print::visit(&ast, false, Some(&variables), Some(&types))
         );
     }
 

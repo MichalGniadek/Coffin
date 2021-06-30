@@ -277,10 +277,10 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn call(&mut self, id: Id, expr: &Expr, args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
         format!(
             "({}{}({}))",
-            self.visit_expr(expr),
+            self.name(name),
             self.span(id),
             args.iter()
                 .map(|e| self.visit_expr(e))

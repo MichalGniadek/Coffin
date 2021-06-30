@@ -152,7 +152,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
 
     fn fun(
         &mut self,
-        fun_id: Id,
+        _fun_id: Id,
         attrs: &Attrs,
         name: Name,
         _paren_id: Id,
@@ -160,7 +160,11 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         _ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
-        let type_id = self.types.type_id(fun_id);
+        let var_id = self
+            .names
+            .var_id(name)
+            .ice_expect("No variableId for function name.");
+        let (type_id, _) = self.types.var_type_id(var_id);
         let fun_type_spirv_id = self.spirv_type_id(type_id, None);
         let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.spirv_type_id(fun.get_return_type(), None),
@@ -412,7 +416,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, _id: Id, _name: Name, _args: &Vec<Expr>) -> Self::Out {
         todo!()
     }
 

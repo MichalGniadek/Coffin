@@ -4,7 +4,7 @@ use self::types::{Type, TypeTable};
 use crate::{
     ast::{self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
     ast_span,
-    error::CoffinError,
+    error::{CoffinError, InternalError},
     name_resolution::NameTable,
     parser::spans_table::SpanTable,
     type_id::{builtin_types, TypeId},
@@ -133,7 +133,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         &mut self,
         fun_id: Id,
         attrs: &Attrs,
-        _name: Name,
+        name: Name,
         paren_id: Id,
         params: &Vec<Field>,
         ret: &Option<(Id, Name)>,
@@ -194,10 +194,18 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             .types
             .new_type(Type::Fun(FunType::new(return_type, param_types)));
 
-        self.types.set_type_id(fun_id, type_id);
+        let var_id = self
+            .names
+            .var_id(name)
+            .ice_expect("No variable id for fun name.");
 
+        // Storage class here is hacky
+        self.types
+            .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
+
+        self.types.set_type_id(fun_id, builtin_types::VOID_ID);
         self.visit_expr(body);
-        type_id
+        builtin_types::VOID_ID
     }
 
     fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
@@ -343,8 +351,14 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
-    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
-        todo!()
+    fn call(&mut self, _id: Id, name: Name, _args: &Vec<Expr>) -> Self::Out {
+        if let Some(_var_id) = self.names.var_id(name) {
+            todo!()
+        } else if self.names.type_id(name) != builtin_types::ERROR_ID {
+            todo!()
+        } else {
+            builtin_types::ERROR_ID
+        }
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {

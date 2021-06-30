@@ -270,6 +270,19 @@ impl Parser<'_> {
                     InfixType::Call => {
                         let id = self.consume();
 
+                        let name = if let Expr::Identifier(name) = left {
+                            name
+                        } else {
+                            let err_span = ast_span::get_expr_span(&left, &self.spans);
+                            self.spans[id].start = err_span.start;
+                            return self.err_consume(
+                                id,
+                                ParserErrorKind::expected_identifier(),
+                                err_span,
+                                &Self::EXPR_SYNC,
+                            );
+                        };
+
                         let mut args = vec![];
 
                         while self.curr_token != Token::RightParen {
@@ -278,7 +291,7 @@ impl Parser<'_> {
                             args.push(expr);
 
                             if is_panic {
-                                return PanicMode(Expr::Call(id, Box::new(left), args));
+                                return PanicMode(Expr::Call(id, name, args));
                             }
 
                             if self.curr_token == Token::Comma {
@@ -295,7 +308,7 @@ impl Parser<'_> {
 
                         self.spans[id].end = self.skip().end;
 
-                        left = Expr::Call(id, Box::new(left), args);
+                        left = Expr::Call(id, name, args);
                     }
                 }
             } else {

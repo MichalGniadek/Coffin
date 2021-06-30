@@ -241,8 +241,18 @@ impl ExprVisitor for NameResolution<'_> {
         }
     }
 
-    fn call(&mut self, _id: Id, _expr: &Expr, _args: &Vec<Expr>) -> Self::Out {
-        todo!()
+    fn call(&mut self, _id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
+        if let Some(var_id) = self.var_scope.find(name.spur) {
+            self.names.set_var(name, *var_id);
+        } else if let Some(type_id) = self.type_scope.find(name.spur) {
+            self.names.set_type(name, *type_id);
+        } else {
+            todo!("Error")
+        }
+
+        for e in args {
+            self.visit_expr(e)
+        }
     }
 
     fn expr_error(&mut self, _id: Id) -> Self::Out {}

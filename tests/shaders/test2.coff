@@ -1,0 +1,6 @@
+#[binding(0)] unif img: image2d
+
+#[compute(8,8,1)]
+fun main(id: Id){
+    img[id.xy as int2] = float4(0.4, 0.164, 0.586, 1.0)
+}

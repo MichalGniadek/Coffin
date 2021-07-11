@@ -83,7 +83,8 @@ pub enum Token {
     Identifier(Spur),
     #[regex(r"[0-9]+", |lex| lex.slice().parse())]
     Int(i32),
-    // Float(f32),
+    #[regex(r"[0-9]+[.][0-9]+", |lex| lex.slice().parse())]
+    Float(f32),
     #[token("else")]
     Else,
     #[token("false")]
@@ -148,6 +149,7 @@ impl Display for Token {
             Token::Arrow => write!(f, "'->'"),
             Token::Identifier(_) => write!(f, "Identifier"),
             Token::Int(_) => write!(f, "Int"),
+            Token::Float(_) => write!(f, "Float"),
             Token::Else => write!(f, "'else'"),
             Token::False => write!(f, "'false'"),
             Token::Fun => write!(f, "'fun'"),
@@ -208,6 +210,31 @@ mod tests {
                 Spur {
                     key: 1,
                 },
+            ),
+        ]
+        "###);
+    }
+
+    #[test]
+    fn floats() {
+        assert_debug_snapshot!(Token::lexer("123 3. .4 23.45 11").collect::<Vec<_>>(), @r###"
+        [
+            Int(
+                123,
+            ),
+            Int(
+                3,
+            ),
+            Dot,
+            Dot,
+            Int(
+                4,
+            ),
+            Float(
+                23.45,
+            ),
+            Int(
+                11,
             ),
         ]
         "###);

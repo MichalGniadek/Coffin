@@ -1,0 +1,4 @@
+fun f(){
+    let a = int3(1,2,3)
+    let b = float2(1.0, 2.0)
+}

@@ -1,0 +1,11 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, false)"
+
+---
+fun f ()  {
+	(let a = (int3(#1, #2, #3)))
+	(let b = (float2(#1, #2)))
+}
+
+===

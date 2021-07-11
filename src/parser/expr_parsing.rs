@@ -52,6 +52,7 @@ impl Parser<'_> {
     fn parse_prefix(&mut self) -> ExprResult {
         match self.curr_token {
             Token::Int(i) => Correct(Expr::Int(self.consume(), i)),
+            Token::Float(f) => Correct(Expr::Float(self.consume(), f)),
             Token::Identifier(spur) => Correct(Expr::Identifier(Name {
                 id: self.consume(),
                 spur,

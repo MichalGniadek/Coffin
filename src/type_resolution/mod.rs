@@ -351,13 +351,29 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
-    fn call(&mut self, _id: Id, name: Name, _args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
         if let Some(_var_id) = self.names.var_id(name) {
-            todo!()
+            todo!("Function calls not supported")
         } else if self.names.type_id(name) != builtin_types::ERROR_ID {
-            todo!()
+            let type_id = self.names.type_id(name);
+            let args: Vec<TypeId> = args.iter().map(|e| self.visit_expr(e)).collect();
+            match &self.types[type_id] {
+                Type::Vector(members, inner) => {
+                    if args.len() != members.len() {
+                        todo!("err")
+                    }
+
+                    if args.iter().any(|t| t != inner) {
+                        todo!("err")
+                    }
+                }
+                _ => todo!(),
+            }
+
+            self.types.set_type_id(id, type_id);
+            type_id
         } else {
-            builtin_types::ERROR_ID
+            todo!("err");
         }
     }
 

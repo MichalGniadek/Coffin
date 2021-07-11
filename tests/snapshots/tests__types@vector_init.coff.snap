@@ -1,0 +1,10 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, true)"
+
+---
+fun f@0 ()  {
+	(let a@1 = (int2@T6(#2: int, #3: int)): vector): void
+}: void
+
+===

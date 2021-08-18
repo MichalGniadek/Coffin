@@ -1,6 +1,7 @@
 use globset::Glob;
 use image::io::Reader as ImageReader;
 use image::{ImageBuffer, Rgba};
+use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use vulkano::{
@@ -20,7 +21,7 @@ fn compute() {
         if entry.file_type().unwrap().is_file() && glob.is_match(entry.file_name()) {
             let src = coffin2::compile_file(&entry.path()).unwrap();
             coffin2::validate_spirv(&src).unwrap();
-            let new_image = test_shader(&src);
+            let new_image = test_shader(&src).unwrap();
 
             let img_path = entry.path().with_extension("png");
             let old_image = match ImageReader::open(&img_path) {
@@ -126,8 +127,8 @@ mod vulkan_img_shader {
     }
 }
 
-fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    let instance = Instance::new(None, &InstanceExtensions::none(), None).unwrap();
+fn test_shader(src: &[u32]) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, Box<dyn Error>> {
+    let instance = Instance::new(None, &InstanceExtensions::none(), None)?;
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
     let queue_family = physical
         .queue_families()
@@ -140,8 +141,7 @@ fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
             &Features::none(),
             &DeviceExtensions::none(),
             [(queue_family, 0.5)].iter().cloned(),
-        )
-        .unwrap()
+        )?
     };
 
     let queue = queues.next().unwrap();
@@ -154,14 +154,16 @@ fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
         },
         Format::R8G8B8A8Unorm,
         Some(queue.family()),
-    )
-    .unwrap();
+    )?;
 
-    let shader = vulkan_img_shader::Shader::load(device.clone(), src).unwrap();
+    let shader = vulkan_img_shader::Shader::load(device.clone(), src)?;
 
-    let compute_pipeline = Arc::new(
-        ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
-    );
+    let compute_pipeline = Arc::new(ComputePipeline::new(
+        device.clone(),
+        &shader.main_entry_point(),
+        &(),
+        None,
+    )?);
 
     let set = Arc::new(
         PersistentDescriptorSet::start(
@@ -171,10 +173,8 @@ fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
                 .unwrap()
                 .clone(),
         )
-        .add_image(image.clone())
-        .unwrap()
-        .build()
-        .unwrap(),
+        .add_image(image.clone())?
+        .build()?,
     );
 
     let buf = CpuAccessibleBuffer::from_iter(
@@ -182,30 +182,24 @@ fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
         BufferUsage::all(),
         false,
         (0..(1024 * 1024 * 4)).map(|_| 0u8),
-    )
-    .unwrap();
+    )?;
 
-    let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
+    let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family())?;
     builder
         .dispatch(
             [1024 / 8, 1024 / 8, 1],
             compute_pipeline.clone(),
             set.clone(),
             (),
-        )
-        .unwrap()
-        .copy_image_to_buffer(image.clone(), buf.clone())
-        .unwrap();
-    let command_buffer = builder.build().unwrap();
+        )?
+        .copy_image_to_buffer(image.clone(), buf.clone())?;
+    let command_buffer = builder.build()?;
 
-    let finished = command_buffer.execute(queue.clone()).unwrap();
+    command_buffer
+        .execute(queue.clone())?
+        .then_signal_fence_and_flush()?
+        .wait(None)?;
 
-    finished
-        .then_signal_fence_and_flush()
-        .unwrap()
-        .wait(None)
-        .unwrap();
-
-    let buf = buf.read().unwrap().to_owned();
-    ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(1024, 1024, buf).unwrap()
+    let buf = buf.read()?.to_owned();
+    Ok(ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(1024, 1024, buf).unwrap())
 }

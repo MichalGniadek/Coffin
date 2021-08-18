@@ -26,7 +26,7 @@ fn compute() {
             let old_image = match ImageReader::open(&img_path) {
                 Ok(img) => match img.decode().unwrap() {
                     image::DynamicImage::ImageRgba8(img) => img,
-                    _ => panic!(),
+                    _ => unimplemented!(),
                 },
                 Err(_) => {
                     new_image.save(img_path.as_path()).unwrap();
@@ -65,16 +65,15 @@ mod vulkan_img_shader {
         pub fn load(device: Arc<Device>, words: &[u32]) -> Result<Shader, OomError> {
             unsafe {
                 Ok(Shader {
-                    shader: ShaderModule::from_words(device, &words)?,
+                    shader: ShaderModule::from_words(device, words)?,
                 })
             }
         }
 
         pub fn main_entry_point(&self) -> ComputeEntryPoint<(), Layout> {
             unsafe {
-                static NAME: [u8; 5usize] = [109u8, 97u8, 105u8, 110u8, 0];
                 self.shader.compute_entry_point(
-                    CStr::from_ptr(NAME.as_ptr() as *const _),
+                    CStr::from_bytes_with_nul(b"main\0").unwrap(),
                     Layout(ShaderStages {
                         compute: true,
                         ..ShaderStages::none()
@@ -89,19 +88,19 @@ mod vulkan_img_shader {
 
     unsafe impl PipelineLayoutDesc for Layout {
         fn num_sets(&self) -> usize {
-            1usize
+            1
         }
 
         fn num_bindings_in_set(&self, set: usize) -> Option<usize> {
             match set {
-                0usize => Some(1usize),
+                0 => Some(1),
                 _ => None,
             }
         }
 
         fn descriptor(&self, set: usize, binding: usize) -> Option<DescriptorDesc> {
             match (set, binding) {
-                (0usize, 0usize) => Some(DescriptorDesc {
+                (0, 0) => Some(DescriptorDesc {
                     ty: DescriptorDescTy::Image(DescriptorImageDesc {
                         sampled: false,
                         dimensions: DescriptorImageDescDimensions::TwoDimensional,
@@ -109,7 +108,7 @@ mod vulkan_img_shader {
                         multisampled: false,
                         array_layers: DescriptorImageDescArray::NonArrayed,
                     }),
-                    array_count: 1u32,
+                    array_count: 1,
                     stages: self.0.clone(),
                     readonly: true,
                 }),
@@ -118,29 +117,18 @@ mod vulkan_img_shader {
         }
 
         fn num_push_constants_ranges(&self) -> usize {
-            0usize
+            0
         }
 
-        fn push_constants_range(&self, num: usize) -> Option<PipelineLayoutDescPcRange> {
-            if num != 0 || 0usize == 0 {
-                None
-            } else {
-                Some(PipelineLayoutDescPcRange {
-                    offset: 0,
-                    size: 0usize,
-                    stages: ShaderStages::all(),
-                })
-            }
+        fn push_constants_range(&self, _: usize) -> Option<PipelineLayoutDescPcRange> {
+            None
         }
     }
 }
 
 fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    let instance =
-        Instance::new(None, &InstanceExtensions::none(), None).expect("failed to create instance");
-
+    let instance = Instance::new(None, &InstanceExtensions::none(), None).unwrap();
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
-
     let queue_family = physical
         .queue_families()
         .find(|&q| q.supports_compute())
@@ -193,7 +181,7 @@ fn test_shader(src: &[u32]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
         device.clone(),
         BufferUsage::all(),
         false,
-        (0..1024 * 1024 * 4).map(|_| 0u8),
+        (0..(1024 * 1024 * 4)).map(|_| 0u8),
     )
     .unwrap();
 

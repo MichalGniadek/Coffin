@@ -58,7 +58,9 @@ impl TypeResolution<'_, '_> {
                             let member_str = self.rodeo.resolve(&member.spur);
 
                             if member_str.chars().all(|c| members.contains(&c)) {
-                                if vec_type == &builtin_types::INT_ID {
+                                if member_str.chars().count() == 1 {
+                                    type_id = *vec_type
+                                } else if vec_type == &builtin_types::INT_ID {
                                     type_id = builtin_types::IVEC_ID[member_str.chars().count()]
                                 } else if vec_type == &builtin_types::FLOAT_ID {
                                     type_id = builtin_types::FVEC_ID[member_str.chars().count()]
@@ -238,6 +240,11 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         let type_id = match (left_type, kind, right_type) {
             (Type::Int, _, Type::Int) => builtin_types::INT_ID,
             (Type::Float, _, Type::Float) => builtin_types::FLOAT_ID,
+            (Type::Vector(vl, tl), BinOpKind::Add | BinOpKind::Sub, Type::Vector(vr, tr))
+                if vl.len() == vr.len() && tr == tl =>
+            {
+                left_id
+            }
             (Type::Error, _, _) => builtin_types::ERROR_ID,
             (_, _, Type::Error) => builtin_types::ERROR_ID,
             _ => {
@@ -343,11 +350,19 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         let after_type = &self.types[type_id];
 
         match (expr_type, after_type) {
+            (Type::Int, Type::Float) | (Type::UInt, Type::Float) => {
+                self.types.set_type_id(id, type_id);
+                type_id
+            }
             (Type::Vector(mem0, _), Type::Vector(mem1, _)) if mem0.len() == mem1.len() => {
                 self.types.set_type_id(id, type_id);
                 type_id
             }
-            _ => todo!("Convert type error"),
+            _ => todo!(
+                "Convert type error, before: {:?}, after: {:?}",
+                expr_type,
+                after_type
+            ),
         }
     }
 

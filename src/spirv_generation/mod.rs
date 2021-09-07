@@ -271,16 +271,64 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         let type_id = self.types.type_id(id);
         let spirv_type = self.spirv_type_id(type_id, None);
-        let ttpe = &self.types[id];
+
+        let left_type = &self.types[left.get_id()];
+        let right_type = &self.types[right.get_id()];
+
         let left = self.visit_expr(left)?;
         let right = self.visit_expr(right)?;
 
-        match (kind, ttpe) {
-            (BinOpKind::Add, Type::Int) => self.code.i_add(spirv_type, None, left, right),
-            (BinOpKind::Sub, Type::Int) => self.code.i_sub(spirv_type, None, left, right),
-            (BinOpKind::Mul, Type::Int) => self.code.i_mul(spirv_type, None, left, right),
-            (BinOpKind::Div, Type::Int) => self.code.s_div(spirv_type, None, left, right),
-            (BinOpKind::Rem, Type::Int) => self.code.s_rem(spirv_type, None, left, right),
+        match (left_type, kind, right_type) {
+            (Type::Int, BinOpKind::Add, Type::Int) => {
+                self.code.i_add(spirv_type, None, left, right)
+            }
+            (Type::Int, BinOpKind::Sub, Type::Int) => {
+                self.code.i_sub(spirv_type, None, left, right)
+            }
+            (Type::Int, BinOpKind::Mul, Type::Int) => {
+                self.code.i_mul(spirv_type, None, left, right)
+            }
+            (Type::Int, BinOpKind::Div, Type::Int) => {
+                self.code.s_div(spirv_type, None, left, right)
+            }
+            (Type::Int, BinOpKind::Rem, Type::Int) => {
+                self.code.s_rem(spirv_type, None, left, right)
+            }
+            (Type::Vector(_, _), BinOpKind::Add, Type::Vector(_, inner))
+                if *inner == builtin_types::INT_ID =>
+            {
+                self.code.i_add(spirv_type, None, left, right)
+            }
+            (Type::Vector(_, _), BinOpKind::Sub, Type::Vector(_, inner))
+                if *inner == builtin_types::INT_ID =>
+            {
+                self.code.i_sub(spirv_type, None, left, right)
+            }
+            (Type::Float, BinOpKind::Add, Type::Float) => {
+                self.code.f_add(spirv_type, None, left, right)
+            }
+            (Type::Float, BinOpKind::Sub, Type::Float) => {
+                self.code.f_sub(spirv_type, None, left, right)
+            }
+            (Type::Float, BinOpKind::Mul, Type::Float) => {
+                self.code.f_mul(spirv_type, None, left, right)
+            }
+            (Type::Float, BinOpKind::Div, Type::Float) => {
+                self.code.f_div(spirv_type, None, left, right)
+            }
+            (Type::Float, BinOpKind::Rem, Type::Float) => {
+                self.code.f_rem(spirv_type, None, left, right)
+            }
+            (Type::Vector(_, _), BinOpKind::Add, Type::Vector(_, inner))
+                if *inner == builtin_types::FLOAT_ID =>
+            {
+                self.code.f_add(spirv_type, None, left, right)
+            }
+            (Type::Vector(_, _), BinOpKind::Sub, Type::Vector(_, inner))
+                if *inner == builtin_types::FLOAT_ID =>
+            {
+                self.code.f_sub(spirv_type, None, left, right)
+            }
             _ => internal_error("Incorrect types and/or operation in binary."),
         }
     }
@@ -327,9 +375,17 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
                         type_id = self.types.type_id(*id);
                         let spirv_type = self.spirv_type_id(type_id, None);
 
-                        spirv_id = self
-                            .code
-                            .vector_shuffle(spirv_type, None, spirv_id, spirv_id, &indices)?;
+                        spirv_id = if indices.len() == 1 {
+                            self.code.composite_extract(
+                                spirv_type,
+                                None,
+                                spirv_id,
+                                &[indices[0]],
+                            )?
+                        } else {
+                            self.code
+                                .vector_shuffle(spirv_type, None, spirv_id, spirv_id, &indices)?
+                        };
                     }
                     _ => internal_error("Type without fields."),
                 },
@@ -403,6 +459,8 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         let expr_id = self.visit_expr(expr)?;
 
         match (type_before, type_after) {
+            (Type::Int, Type::Float) => self.code.convert_s_to_f(spirv_type_id, None, expr_id),
+            (Type::UInt, Type::Float) => self.code.convert_u_to_f(spirv_type_id, None, expr_id),
             (Type::Vector(_, builtin_types::INT_ID), Type::Vector(_, builtin_types::FLOAT_ID)) => {
                 self.code.convert_s_to_f(spirv_type_id, None, expr_id)
             }

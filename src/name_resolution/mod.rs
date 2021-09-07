@@ -59,6 +59,7 @@ impl Scopes<TypeId> {
         for (name, id) in [
             ("void", VOID_ID),
             ("int", INT_ID),
+            ("float", FLOAT_ID),
             ("int1", IVEC_ID[1]),
             ("int2", IVEC_ID[2]),
             ("int3", IVEC_ID[3]),
@@ -162,6 +163,7 @@ impl ItemVisitor for NameResolution<'_> {
 
 impl ExprVisitor for NameResolution<'_> {
     type Out = ();
+
     fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
         self.visit_expr(left);
         self.visit_expr(right);

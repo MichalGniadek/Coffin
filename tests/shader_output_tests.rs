@@ -20,7 +20,9 @@ fn compute() {
 
         if entry.file_type().unwrap().is_file() && glob.is_match(entry.file_name()) {
             let src = coffin2::compile_file(&entry.path()).unwrap();
-            coffin2::validate_spirv(&src).unwrap();
+            if let Err(err) = coffin2::validate_spirv(&src) {
+                panic!("{:#?}", err);
+            }
             let new_image = test_shader(&src).unwrap();
 
             let img_path = entry.path().with_extension("png");

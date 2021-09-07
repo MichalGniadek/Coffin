@@ -1,4 +1,6 @@
 fun f(){
     1 as int + 2
     1 as int as float
+    v.x as float
+    float4(id.x as float, 1.0, 1.0, 1.0)
 }

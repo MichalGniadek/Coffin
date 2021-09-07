@@ -2,5 +2,5 @@
 
 #[compute(8,8,1)]
 fun main(id: Id){
-    img[id.xy as int2] = id.xxzx as float4
+    img[id.xy as int2] = float4(id.x as float / 1024.0, id.y as float / 1024.0, 0.0, 1.0)
 }

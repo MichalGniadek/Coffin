@@ -289,6 +289,26 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
+    fn iff(
+        &mut self,
+        id: Id,
+        condition: &Expr,
+        block: &Expr,
+        elsee: Option<(Id, &Expr)>,
+    ) -> Self::Out {
+        format!(
+            "({}if {} {}{})",
+            self.span(id),
+            self.visit_expr(condition),
+            self.visit_expr(block),
+            if let Some((id, elsee)) = elsee {
+                format!(" {}else {}", self.span(id), self.visit_expr(elsee))
+            } else {
+                String::new()
+            }
+        )
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         format!("{}Err", self.span(id))
     }

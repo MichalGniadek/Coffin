@@ -112,6 +112,21 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[name.id].start..self.0[id].end
     }
 
+    fn iff(
+        &mut self,
+        id: Id,
+        _condition: &Expr,
+        block: &Expr,
+        elsee: Option<(Id, &Expr)>,
+    ) -> Self::Out {
+        let end = if let Some((_, elsee)) = elsee {
+            self.visit_expr(elsee)
+        } else {
+            self.visit_expr(block)
+        };
+        self.0[id].start..end.end
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         self.0[id].clone()
     }

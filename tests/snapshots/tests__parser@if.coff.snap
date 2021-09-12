@@ -1,0 +1,33 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, false)"
+
+---
+fun test1 ()  {
+	(if $a {
+		$b
+	})
+	(if $a {
+		$b
+	} else {
+		$c
+	})
+	(if (if $a {
+		$b
+	} else {
+		$c
+	}) {
+		$d
+	})
+}
+fun test2 ()  {
+	Err
+}
+fun test3 ()  {
+	Err
+}
+
+===
+Expected '{'. [114..115]
+Expected prefix token. [142..143]
+Expected '{'. [145..146]

@@ -400,6 +400,16 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
+    fn iff(
+        &mut self,
+        _id: Id,
+        _condition: &Expr,
+        _block: &Expr,
+        _elsee: Option<(Id, &Expr)>,
+    ) -> Self::Out {
+        todo!()
+    }
+
     fn expr_error(&mut self, id: Id) -> Self::Out {
         self.types.set_type_id(id, builtin_types::ERROR_ID);
         builtin_types::ERROR_ID

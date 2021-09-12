@@ -59,6 +59,7 @@ impl Parser<'_> {
             })),
             Token::Let => self.parse_let(),
             Token::LeftBrace => self.parse_block(),
+            Token::If => self.parse_if(),
             _ => PanicMode(self.err_consume(
                 None,
                 ParserErrorKind::ExpectedPrefixToken,
@@ -128,6 +129,36 @@ impl Parser<'_> {
             if is_panic && self.curr_token != Token::RightBrace {
                 return PanicMode(Expr::Block(id, exprs));
             }
+        }
+    }
+
+    fn parse_if(&mut self) -> ExprResult {
+        let id = self.consume_expect(Token::If);
+        let (condition, condition_panic) = self.parse_expr(None).destruct();
+
+        if self.curr_token != Token::LeftBrace {
+            return self.err_consume(
+                id,
+                ParserErrorKind::ExpectedToken(Token::LeftBrace),
+                None,
+                &Self::ITEM_SYNC,
+            );
+        };
+        let (block, block_panic) = self.parse_block().destruct();
+
+        let (else_node, else_panic) = if self.curr_token == Token::Else {
+            let else_id = self.consume_expect(Token::Else);
+            let (else_block, else_panic) = self.parse_block().destruct();
+            (Some((else_id, Box::new(else_block))), else_panic)
+        } else {
+            (None, false)
+        };
+
+        let node = Expr::If(id, Box::new(condition), Box::new(block), else_node);
+        if condition_panic || block_panic || else_panic {
+            PanicMode(node)
+        } else {
+            Correct(node)
         }
     }
 

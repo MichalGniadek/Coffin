@@ -257,5 +257,15 @@ impl ExprVisitor for NameResolution<'_> {
         }
     }
 
+    fn iff(
+        &mut self,
+        _id: Id,
+        _condition: &Expr,
+        _block: &Expr,
+        _elsee: Option<(Id, &Expr)>,
+    ) -> Self::Out {
+        todo!()
+    }
+
     fn expr_error(&mut self, _id: Id) -> Self::Out {}
 }

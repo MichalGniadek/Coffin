@@ -1,0 +1,13 @@
+fun test1(){
+    if a {b}
+    if a {b} else {c}
+    if if a {b} else {c} {d}
+}
+
+fun test2(){
+    if a+ {}
+}
+
+fun test3(){
+    if a+@ {}
+}

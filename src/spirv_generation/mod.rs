@@ -477,8 +477,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
     fn call(&mut self, _id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
         if let Some(_var_id) = self.names.var_id(name) {
             todo!("Function calls not supported")
-        } else if self.names.type_id(name) != builtin_types::ERROR_ID {
-            let type_id = self.names.type_id(name);
+        } else if let Some(type_id) = self.names.type_id(name) {
             let spirv_type_id = self.spirv_type_id(type_id, None);
             let args = args.iter().try_fold(vec![], |mut v, e| {
                 v.push(self.visit_expr(e)?);

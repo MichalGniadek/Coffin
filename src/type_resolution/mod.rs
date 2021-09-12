@@ -145,11 +145,14 @@ impl ItemVisitor for TypeResolution<'_, '_> {
 
         let compute = attrs.get_attr(self.rodeo.get("compute"));
         if compute.len() == 0 {
-            for field in params {
-                let type_id = self.names.type_id(field.ttpe);
+            for param in params {
+                let type_id = self
+                    .names
+                    .type_id(param.ttpe)
+                    .unwrap_or(builtin_types::ERROR_ID);
                 param_types.push(type_id);
 
-                if let Some(var_id) = self.names.var_id(field.name) {
+                if let Some(var_id) = self.names.var_id(param.name) {
                     self.types
                         .set_var_type_id(var_id, type_id, StorageClass::Function);
                 }
@@ -165,7 +168,10 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             }
             let id_param = params[0];
 
-            let type_id = self.names.type_id(id_param.ttpe);
+            let type_id = self
+                .names
+                .type_id(id_param.ttpe)
+                .unwrap_or(builtin_types::ERROR_ID);
             if type_id != builtin_types::ID_ID {
                 self.errors.push(
                     CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
@@ -188,7 +194,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         }
 
         let return_type = match ret {
-            Some((_, ttpe)) => self.names.type_id(*ttpe),
+            Some((_, ttpe)) => self.names.type_id(*ttpe).unwrap_or(builtin_types::ERROR_ID),
             None => builtin_types::VOID_ID,
         };
 
@@ -211,7 +217,10 @@ impl ItemVisitor for TypeResolution<'_, '_> {
     }
 
     fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
-        let type_id = self.names.type_id(field.ttpe);
+        let type_id = self
+            .names
+            .type_id(field.ttpe)
+            .unwrap_or(builtin_types::ERROR_ID);
         if let Some(var_id) = self.names.var_id(field.name) {
             self.types
                 .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
@@ -344,7 +353,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
     fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
         let expr_id = self.visit_expr(expr);
-        let type_id = self.names.type_id(ttpe);
+        let type_id = self.names.type_id(ttpe).unwrap_or(builtin_types::ERROR_ID);
 
         let expr_type = &self.types[expr_id];
         let after_type = &self.types[type_id];
@@ -369,8 +378,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
         if let Some(_var_id) = self.names.var_id(name) {
             todo!("Function calls not supported")
-        } else if self.names.type_id(name) != builtin_types::ERROR_ID {
-            let type_id = self.names.type_id(name);
+        } else if let Some(type_id) = self.names.type_id(name) {
             let args: Vec<TypeId> = args.iter().map(|e| self.visit_expr(e)).collect();
             match &self.types[type_id] {
                 Type::Vector(members, inner) => {

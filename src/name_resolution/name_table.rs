@@ -1,6 +1,6 @@
 use crate::{
     ast::{Id, Name},
-    type_id::{builtin_types, TypeId},
+    type_id::TypeId,
 };
 use std::collections::HashMap;
 
@@ -27,8 +27,8 @@ impl NameTable {
         self.variables.get(&name.id).cloned()
     }
 
-    pub fn type_id(&self, name: Name) -> TypeId {
-        *self.types.get(&name.id).unwrap_or(&builtin_types::ERROR_ID)
+    pub fn type_id(&self, name: Name) -> Option<TypeId> {
+        self.types.get(&name.id).cloned()
     }
 
     pub fn max_var_id(&self) -> VariableId {

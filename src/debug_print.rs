@@ -4,7 +4,6 @@ use crate::{
     },
     name_resolution::NameTable,
     parser::spans_table::SpanTable,
-    type_id::builtin_types,
     type_resolution::types::TypeTable,
 };
 use lasso::{RodeoReader, Spur};
@@ -55,7 +54,7 @@ impl DebugPrint<'_, '_, '_> {
         let var_string = match self.names {
             Some(map) => match (map.var_id(name), map.type_id(name)) {
                 (Some(id), _) => format!("@{}", usize::from(id)),
-                (_, id) if id != builtin_types::ERROR_ID => format!("@T{}", usize::from(id)),
+                (_, Some(id)) => format!("@T{}", usize::from(id)),
                 _ => format!("@X"),
             },
             None => String::new(),

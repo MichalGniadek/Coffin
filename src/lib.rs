@@ -7,8 +7,8 @@ pub mod lexer;
 pub mod name_resolution;
 pub mod parser;
 pub mod spirv_generation;
-pub mod type_resolution;
 pub mod type_id;
+pub mod type_resolution;
 
 use assembler::{Assembler, DisassembleOptions};
 use error::CoffinError;

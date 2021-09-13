@@ -58,7 +58,7 @@ pub struct Name {
 pub struct Field {
     pub name: Name,
     pub colon_id: Id,
-    pub ttpe: Name,
+    pub r#type: Name,
 }
 
 #[derive(Debug, Clone)]
@@ -226,27 +226,27 @@ pub trait ExprVisitor {
                 name,
                 eq_id,
                 expr,
-            } => self.let_declaration(*let_id, *mut_id, *name, *eq_id, expr),
+            } => self.r#let(*let_id, *mut_id, *name, *eq_id, expr),
             Expr::Access(id, expr, access) => self.access(*id, expr, access),
             Expr::Assign(id, left, access, right) => self.assign(*id, left, access, right),
             Expr::Identifier(name) => self.identifier(*name),
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
             Expr::Block(id, exprs) => self.block(*id, exprs),
-            Expr::Convert(id, expr, ttpe) => self.convert(*id, expr, *ttpe),
+            Expr::Convert(id, expr, r#type) => self.convert(*id, expr, *r#type),
             Expr::Call(id, name, args) => self.call(*id, *name, args),
-            Expr::If(id, condition, block, elsee) => self.iff(
+            Expr::If(id, condition, block, r#else) => self.r#if(
                 *id,
                 condition,
                 block,
-                elsee.as_ref().map(|(id, e)| (*id, &**e)),
+                r#else.as_ref().map(|(id, e)| (*id, &**e)),
             ),
             Expr::Error(id) => self.expr_error(*id),
         }
     }
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
-    fn let_declaration(
+    fn r#let(
         &mut self,
         let_id: Id,
         mut_id: Option<Id>,
@@ -260,14 +260,14 @@ pub trait ExprVisitor {
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
-    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out;
+    fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out;
     fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out;
-    fn iff(
+    fn r#if(
         &mut self,
         id: Id,
         condition: &Expr,
         block: &Expr,
-        elsee: Option<(Id, &Expr)>,
+        r#else: Option<(Id, &Expr)>,
     ) -> Self::Out;
     fn expr_error(&mut self, id: Id) -> Self::Out;
 }

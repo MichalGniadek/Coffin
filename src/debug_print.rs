@@ -67,13 +67,13 @@ impl DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn ttpe(&self, id: Id) -> String {
-        let ttpe = match self.types {
+    fn r#type(&self, id: Id) -> String {
+        let r#type = match self.types {
             Some(t) => &t[t.type_id(id)],
             None => return String::new(),
         };
 
-        format!(": {}", ttpe)
+        format!(": {}", r#type)
     }
 
     fn field(&self, field: &Field) -> String {
@@ -81,7 +81,7 @@ impl DebugPrint<'_, '_, '_> {
             "{} {}: {}",
             self.name(field.name),
             self.span(field.colon_id),
-            self.name(field.ttpe),
+            self.name(field.r#type),
         )
     }
 
@@ -189,11 +189,11 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
             self.span(id),
             kind,
             self.visit_expr(right),
-            self.ttpe(id),
+            self.r#type(id),
         )
     }
 
-    fn let_declaration(
+    fn r#let(
         &mut self,
         let_id: Id,
         mut_id: Option<Id>,
@@ -213,7 +213,7 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
             self.name(name),
             self.span(eq_id),
             self.visit_expr(expr),
-            self.ttpe(let_id),
+            self.r#type(let_id),
         )
     }
 
@@ -228,20 +228,20 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
             self.print_access(access),
             self.span(id),
             self.visit_expr(right),
-            self.ttpe(id),
+            self.r#type(id),
         )
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        format!("${}{}", self.name(name), self.ttpe(name.id))
+        format!("${}{}", self.name(name), self.r#type(name.id))
     }
 
     fn float(&mut self, id: Id, f: f32) -> Self::Out {
-        format!("{}#{}{}", self.span(id), f, self.ttpe(id))
+        format!("{}#{}{}", self.span(id), f, self.r#type(id))
     }
 
     fn int(&mut self, id: Id, i: i32) -> Self::Out {
-        format!("{}#{}{}", self.span(id), i, self.ttpe(id))
+        format!("{}#{}{}", self.span(id), i, self.r#type(id))
     }
 
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
@@ -262,17 +262,17 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
             self.indent,
             body,
             self.indent,
-            self.ttpe(id),
+            self.r#type(id),
         )
     }
 
-    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+    fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out {
         format!(
             "({} {}as {}){}",
             self.visit_expr(expr),
             self.span(id),
-            self.name(ttpe),
-            self.ttpe(id),
+            self.name(r#type),
+            self.r#type(id),
         )
     }
 
@@ -285,24 +285,24 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
                 .map(|e| self.visit_expr(e))
                 .intersperse(", ".into())
                 .collect::<String>(),
-            self.ttpe(id),
+            self.r#type(id),
         )
     }
 
-    fn iff(
+    fn r#if(
         &mut self,
         id: Id,
         condition: &Expr,
         block: &Expr,
-        elsee: Option<(Id, &Expr)>,
+        r#else: Option<(Id, &Expr)>,
     ) -> Self::Out {
         format!(
             "({}if {} {}{})",
             self.span(id),
             self.visit_expr(condition),
             self.visit_expr(block),
-            if let Some((id, elsee)) = elsee {
-                format!(" {}else {}", self.span(id), self.visit_expr(elsee))
+            if let Some((id, r#else)) = r#else {
+                format!(" {}else {}", self.span(id), self.visit_expr(r#else))
             } else {
                 String::new()
             }

@@ -148,7 +148,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             for param in params {
                 let type_id = self
                     .names
-                    .type_id(param.ttpe)
+                    .type_id(param.r#type)
                     .unwrap_or(builtin_types::ERROR_ID);
                 param_types.push(type_id);
 
@@ -170,12 +170,12 @@ impl ItemVisitor for TypeResolution<'_, '_> {
 
             let type_id = self
                 .names
-                .type_id(id_param.ttpe)
+                .type_id(id_param.r#type)
                 .unwrap_or(builtin_types::ERROR_ID);
             if type_id != builtin_types::ID_ID {
                 self.errors.push(
                     CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
-                        self.spans[id_param.ttpe.id].clone(),
+                        self.spans[id_param.r#type.id].clone(),
                     ),
                 );
                 return builtin_types::ERROR_ID;
@@ -194,7 +194,10 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         }
 
         let return_type = match ret {
-            Some((_, ttpe)) => self.names.type_id(*ttpe).unwrap_or(builtin_types::ERROR_ID),
+            Some((_, r#type)) => self
+                .names
+                .type_id(*r#type)
+                .unwrap_or(builtin_types::ERROR_ID),
             None => builtin_types::VOID_ID,
         };
 
@@ -219,7 +222,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
     fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
         let type_id = self
             .names
-            .type_id(field.ttpe)
+            .type_id(field.r#type)
             .unwrap_or(builtin_types::ERROR_ID);
         if let Some(var_id) = self.names.var_id(field.name) {
             self.types
@@ -276,7 +279,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         type_id
     }
 
-    fn let_declaration(
+    fn r#let(
         &mut self,
         let_id: Id,
         _mut_id: Option<Id>,
@@ -351,9 +354,12 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         type_id
     }
 
-    fn convert(&mut self, id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+    fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out {
         let expr_id = self.visit_expr(expr);
-        let type_id = self.names.type_id(ttpe).unwrap_or(builtin_types::ERROR_ID);
+        let type_id = self
+            .names
+            .type_id(r#type)
+            .unwrap_or(builtin_types::ERROR_ID);
 
         let expr_type = &self.types[expr_id];
         let after_type = &self.types[type_id];
@@ -400,12 +406,12 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
-    fn iff(
+    fn r#if(
         &mut self,
         _id: Id,
         _condition: &Expr,
         _block: &Expr,
-        _elsee: Option<(Id, &Expr)>,
+        r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
         todo!()
     }

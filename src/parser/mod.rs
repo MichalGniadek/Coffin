@@ -169,7 +169,7 @@ impl Parser<'_> {
             }
         };
 
-        let ttpe = match self.curr_token {
+        let r#type = match self.curr_token {
             Token::Identifier(spur) => Name {
                 id: self.consume(),
                 spur,
@@ -187,7 +187,7 @@ impl Parser<'_> {
         Ok(Field {
             name,
             colon_id,
-            ttpe,
+            r#type,
         })
     }
 }

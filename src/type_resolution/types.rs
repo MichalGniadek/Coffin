@@ -92,12 +92,12 @@ impl TypeTable {
         slf
     }
 
-    pub fn set_type(&mut self, type_id: TypeId, ttpe: Type) {
-        self.types[usize::from(type_id)] = ttpe;
+    pub fn set_type(&mut self, type_id: TypeId, r#type: Type) {
+        self.types[usize::from(type_id)] = r#type;
     }
 
-    pub fn new_type(&mut self, ttpe: Type) -> TypeId {
-        self.types.push(ttpe);
+    pub fn new_type(&mut self, r#type: Type) -> TypeId {
+        self.types.push(r#type);
         self.max_type_id.next()
     }
 

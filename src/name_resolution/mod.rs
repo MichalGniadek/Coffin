@@ -126,10 +126,10 @@ impl ItemVisitor for NameResolution<'_> {
         for param in params {
             self.new_variable(param.name);
 
-            match self.type_scope.find(param.ttpe.spur) {
-                Some(type_id) => self.names.set_type(param.ttpe, *type_id),
+            match self.type_scope.find(param.r#type.spur) {
+                Some(type_id) => self.names.set_type(param.r#type, *type_id),
                 None => self.errors.push(CoffinError::UndeclaredType(
-                    self.spans[param.ttpe.id].clone(),
+                    self.spans[param.r#type.id].clone(),
                 )),
             }
         }
@@ -150,10 +150,10 @@ impl ItemVisitor for NameResolution<'_> {
     fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
         self.new_variable(field.name);
 
-        match self.type_scope.find(field.ttpe.spur) {
-            Some(type_id) => self.names.set_type(field.ttpe, *type_id),
+        match self.type_scope.find(field.r#type.spur) {
+            Some(type_id) => self.names.set_type(field.r#type, *type_id),
             None => self.errors.push(CoffinError::UndeclaredType(
-                self.spans[field.ttpe.id].clone(),
+                self.spans[field.r#type.id].clone(),
             )),
         }
     }
@@ -169,7 +169,7 @@ impl ExprVisitor for NameResolution<'_> {
         self.visit_expr(right);
     }
 
-    fn let_declaration(
+    fn r#let(
         &mut self,
         _let_id: Id,
         _mut_id: Option<Id>,
@@ -232,14 +232,14 @@ impl ExprVisitor for NameResolution<'_> {
         self.var_scope.pop();
     }
 
-    fn convert(&mut self, _id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
+    fn convert(&mut self, _id: Id, expr: &Expr, r#type: Name) -> Self::Out {
         self.visit_expr(expr);
 
-        match self.type_scope.find(ttpe.spur) {
-            Some(type_id) => self.names.set_type(ttpe, *type_id),
+        match self.type_scope.find(r#type.spur) {
+            Some(type_id) => self.names.set_type(r#type, *type_id),
             None => self
                 .errors
-                .push(CoffinError::UndeclaredType(self.spans[ttpe.id].clone())),
+                .push(CoffinError::UndeclaredType(self.spans[r#type.id].clone())),
         }
     }
 
@@ -257,12 +257,12 @@ impl ExprVisitor for NameResolution<'_> {
         }
     }
 
-    fn iff(
+    fn r#if(
         &mut self,
         _id: Id,
         _condition: &Expr,
         _block: &Expr,
-        _elsee: Option<(Id, &Expr)>,
+        r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
         todo!()
     }

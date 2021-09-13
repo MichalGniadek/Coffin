@@ -41,7 +41,7 @@ impl ItemVisitor for SpanGetter<'_> {
             Attrs::None => &self.0[unif_id],
             Attrs::Error(id) => &self.0[*id],
         };
-        start.start..self.0[field.ttpe.id].end
+        start.start..self.0[field.r#type.id].end
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
@@ -56,7 +56,7 @@ impl ExprVisitor for SpanGetter<'_> {
         self.visit_expr(left).start..self.visit_expr(right).end
     }
 
-    fn let_declaration(
+    fn r#let(
         &mut self,
         let_id: Id,
         _mut_id: Option<Id>,
@@ -104,26 +104,27 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[id].clone()
     }
 
-    fn convert(&mut self, _id: Id, expr: &Expr, ttpe: Name) -> Self::Out {
-        self.visit_expr(expr).start..self.0[ttpe.id].end
+    fn convert(&mut self, _id: Id, expr: &Expr, r#type: Name) -> Self::Out {
+        self.visit_expr(expr).start..self.0[r#type.id].end
     }
 
     fn call(&mut self, id: Id, name: Name, _args: &Vec<Expr>) -> Self::Out {
         self.0[name.id].start..self.0[id].end
     }
 
-    fn iff(
+    fn r#if(
         &mut self,
         id: Id,
         _condition: &Expr,
         block: &Expr,
-        elsee: Option<(Id, &Expr)>,
+        r#else: Option<(Id, &Expr)>,
     ) -> Self::Out {
-        let end = if let Some((_, elsee)) = elsee {
-            self.visit_expr(elsee)
+        let end = if let Some((_, r#else)) = r#else {
+            self.visit_expr(r#else)
         } else {
             self.visit_expr(block)
         };
+
         self.0[id].start..end.end
     }
 

@@ -333,7 +333,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn let_declaration(
+    fn r#let(
         &mut self,
         _let_id: Id,
         _mut_id: Option<Id>,
@@ -451,7 +451,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn convert(&mut self, id: Id, expr: &Expr, _ttpe: Name) -> Self::Out {
+    fn convert(&mut self, id: Id, expr: &Expr, r#_type: Name) -> Self::Out {
         let type_before = &self.types[expr.get_id()];
         let type_after = &self.types[id];
         let spirv_type_id = self.spirv_type_id(self.types.type_id(id), None);
@@ -493,12 +493,12 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn iff(
+    fn r#if(
         &mut self,
         _id: Id,
         _condition: &Expr,
         _block: &Expr,
-        _elsee: Option<(Id, &Expr)>,
+        r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
         todo!()
     }

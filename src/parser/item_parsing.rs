@@ -145,7 +145,7 @@ impl Parser<'_> {
         let ret = if self.curr_token == Token::Arrow {
             let arrow_id = self.consume();
 
-            let ttpe = match self.curr_token {
+            let r#type = match self.curr_token {
                 Token::Identifier(spur) => Name {
                     id: self.consume(),
                     spur,
@@ -160,7 +160,7 @@ impl Parser<'_> {
                 }
             };
 
-            Some((arrow_id, ttpe))
+            Some((arrow_id, r#type))
         } else {
             None
         };

@@ -260,11 +260,21 @@ impl ExprVisitor for NameResolution<'_> {
     fn r#if(
         &mut self,
         _id: Id,
-        _condition: &Expr,
-        _block: &Expr,
+        condition: &Expr,
+        block: &Expr,
         r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
-        todo!()
+        self.var_scope.push();
+        self.visit_expr(condition);
+        self.var_scope.pop();
+        self.var_scope.push();
+        self.visit_expr(block);
+        self.var_scope.pop();
+        if let Some((_, r#else)) = r#_else {
+            self.var_scope.push();
+            self.visit_expr(r#else);
+            self.var_scope.pop();
+        }
     }
 
     fn expr_error(&mut self, _id: Id) -> Self::Out {}

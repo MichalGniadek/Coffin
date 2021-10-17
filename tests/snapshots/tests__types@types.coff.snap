@@ -4,14 +4,14 @@ expression: "test_util(path, false, false, true)"
 
 ---
 fun a@0 ()  {
-	(let a@1 = #3: int): void
-	(let b@2 = ($a@1: int + #5: int): int): void
+	(let a@1 = #3: int): unit
+	(let b@2 = ($a@1: int + #5: int): int): unit
 	(let c@3 = {
 		($a@1: int + $b@2: int): int
-	}: int): void
+	}: int): unit
 	(let d@4 = {
-		(($a@1: int) = $b@2: int): void
-	}: void): void
-}: void
+		(($a@1: int) = $b@2: int): unit
+	}: unit): unit
+}: unit
 
 ===

@@ -91,7 +91,7 @@ impl SpirvGen<'_, '_, '_> {
         // Check if we already creates spirv id for this type
         if self.spirv_types[type_id] == 0 {
             self.spirv_types[type_id] = match &self.types[type_id] {
-                Type::Void => self.code.type_void(),
+                Type::Unit => self.code.type_void(),
                 Type::Error => internal_error("Trying to get spirv id for Type::Error"),
                 Type::Int => self.code.type_int(32, 1),
                 Type::UInt => self.code.type_int(32, 0),

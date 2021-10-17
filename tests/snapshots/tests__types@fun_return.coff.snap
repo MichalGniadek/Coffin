@@ -5,10 +5,10 @@ expression: "test_util(path, false, false, true)"
 ---
 fun a@0 () -> void@T1 {
 	
-}: void
+}: unit
 fun b@1 () -> Undeclared@X {
 	
-}: void
+}: unit
 
 ===
 Undeclared type. [31..41]

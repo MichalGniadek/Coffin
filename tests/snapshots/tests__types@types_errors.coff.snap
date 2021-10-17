@@ -6,16 +6,16 @@ expression: "test_util(path, false, false, true)"
 fun a@0 (arg1@1 : NonExistant@X, arg2@2 : int@T2)  {
 	(($arg2@2: int) = {
 		(#2: int + #2: int): int
-	}: int): void
+	}: int): unit
 	(($arg2@2: int) = {
-		(($arg2@2: int) = #3: int): void
-	}: void): void
+		(($arg2@2: int) = #3: int): unit
+	}: unit): unit
 	(#3: int + {
 		
-	}: void): error
+	}: unit): error
 }: error
 
 ===
 Undeclared type. [12..23]
-Mismatched type. Expected: int, got: void. [67..77]
-Wrong types for '+': int and void [83..84]
+Mismatched type. Expected: int, got: unit. [67..77]
+Wrong types for '+': int and unit [83..84]

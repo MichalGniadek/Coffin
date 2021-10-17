@@ -11,14 +11,14 @@ fun f@1 (a@2 : float4@T16)  {
 	($a@2: vector).w
 	($a@2: vector)[#3: int]
 	($a@2: vector)[#0: int]
-	(($img@0: image)[#123: int] = $a@2: vector): void
+	(($img@0: image)[#123: int] = $a@2: vector): unit
 	($img@0: image)[#123: int]
 	($a@2: vector).xyaw
 	($a@2: vector).b
 	($a@2: vector)[#4: int]
 	($a@2: vector)[$a@2: vector]
 	($a@2: vector).x.x
-	(($a@2: vector).x = ($a@2: vector).y): void
+	(($a@2: vector).x = ($a@2: vector).y): unit
 	($img@0: image).asd
 }: error
 

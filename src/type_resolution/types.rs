@@ -10,29 +10,25 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunType(Vec<TypeId>);
+pub struct FunType(Vec<TypeId>, TypeId);
 
 impl FunType {
-    pub fn new(return_type: TypeId, mut parameters: Vec<TypeId>) -> Self {
-        parameters.push(return_type);
-        Self(parameters)
+    pub fn new(return_type: TypeId, parameters: Vec<TypeId>) -> Self {
+        Self(parameters, return_type)
     }
 
     pub fn get_return_type(&self) -> TypeId {
-        self.0
-            .last()
-            .expect("Interal compiler error: FunType should always have a return type.")
-            .clone()
+        self.1
     }
 
     pub fn get_param_types(&self) -> &[TypeId] {
-        &self.0[..self.0.len() - 1]
+        &self.0
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-    Void,
+    Unit,
     Error,
     Int,
     UInt,
@@ -45,7 +41,7 @@ pub enum Type {
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Void => write!(f, "void"),
+            Type::Unit => write!(f, "unit"),
             Type::Error => write!(f, "error"),
             Type::Int => write!(f, "int"),
             Type::UInt => write!(f, "uint"),
@@ -76,7 +72,7 @@ impl TypeTable {
         };
 
         slf.set_type(ERROR_ID, Type::Error);
-        slf.set_type(VOID_ID, Type::Void);
+        slf.set_type(UNIT_ID, Type::Unit);
         slf.set_type(INT_ID, Type::Int);
         slf.set_type(UINT_ID, Type::UInt);
         slf.set_type(FLOAT_ID, Type::Float);

@@ -30,7 +30,7 @@ pub mod builtin_types {
     use super::TypeId;
 
     pub const ERROR_ID: TypeId = TypeId(0);
-    pub const VOID_ID: TypeId = TypeId(1);
+    pub const UNIT_ID: TypeId = TypeId(1);
     pub const INT_ID: TypeId = TypeId(2);
     pub const UINT_ID: TypeId = TypeId(3);
     pub const FLOAT_ID: TypeId = TypeId(4);

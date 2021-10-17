@@ -6,7 +6,7 @@ expression: "test_util(path, false, false, true)"
 unif a@0 : int@T2
 unif b@1 : int@T2
 fun a@2 (a@3 : void@T1)  {
-	$a@3: void
+	$a@3: unit
 	$b@1: int
 }: int
 

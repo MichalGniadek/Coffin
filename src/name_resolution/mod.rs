@@ -57,7 +57,7 @@ impl Scopes<TypeId> {
         let mut slf = Self::new();
         use crate::type_id::builtin_types::*;
         for (name, id) in [
-            ("void", VOID_ID),
+            ("void", UNIT_ID),
             ("int", INT_ID),
             ("float", FLOAT_ID),
             ("int1", IVEC_ID[1]),

@@ -129,7 +129,7 @@ impl TypeResolution<'_, '_> {
 }
 
 impl ItemVisitor for TypeResolution<'_, '_> {
-    type Out = TypeId;
+    type Out = ();
 
     fn fun(
         &mut self,
@@ -164,7 +164,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                         self.spans[paren_id].clone(),
                     ),
                 );
-                return builtin_types::ERROR_ID;
+                return;
             }
             let id_param = params[0];
 
@@ -178,7 +178,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                         self.spans[id_param.r#type.id].clone(),
                     ),
                 );
-                return builtin_types::ERROR_ID;
+                return;
             }
 
             if let Some(var_id) = self.names.var_id(id_param.name) {
@@ -190,7 +190,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                 "compute".into(),
                 self.spans[compute[1].0.id].clone(),
             ));
-            return builtin_types::ERROR_ID;
+            return;
         }
 
         let return_type = match ret {
@@ -198,7 +198,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                 .names
                 .type_id(*r#type)
                 .unwrap_or(builtin_types::ERROR_ID),
-            None => builtin_types::VOID_ID,
+            None => builtin_types::UNIT_ID,
         };
 
         let type_id = self
@@ -214,9 +214,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         self.types
             .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
 
-        self.types.set_type_id(fun_id, builtin_types::VOID_ID);
+        self.types.set_type_id(fun_id, type_id);
         self.visit_expr(body);
-        builtin_types::VOID_ID
     }
 
     fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
@@ -229,13 +228,11 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                 .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
         }
 
-        self.types.set_type_id(unif_id, builtin_types::VOID_ID);
-        builtin_types::VOID_ID
+        self.types.set_type_id(unif_id, builtin_types::UNIT_ID);
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
         self.types.set_type_id(id, builtin_types::ERROR_ID);
-        builtin_types::ERROR_ID
     }
 }
 
@@ -293,8 +290,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
                 .set_var_type_id(var_id, type_id, StorageClass::Function);
         }
 
-        self.types.set_type_id(let_id, builtin_types::VOID_ID);
-        builtin_types::VOID_ID
+        self.types.set_type_id(let_id, builtin_types::UNIT_ID);
+        builtin_types::UNIT_ID
     }
 
     fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
@@ -321,8 +318,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             });
         }
 
-        self.types.set_type_id(id, builtin_types::VOID_ID);
-        builtin_types::VOID_ID
+        self.types.set_type_id(id, builtin_types::UNIT_ID);
+        builtin_types::UNIT_ID
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
@@ -348,7 +345,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
     fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
         let type_id = match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(expr_id) => expr_id,
-            None => builtin_types::VOID_ID,
+            None => builtin_types::UNIT_ID,
         };
         self.types.set_type_id(id, type_id);
         type_id
@@ -413,8 +410,8 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         _block: &Expr,
         r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::VOID_ID);
-        builtin_types::VOID_ID
+        self.types.set_type_id(id, builtin_types::UNIT_ID);
+        builtin_types::UNIT_ID
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {

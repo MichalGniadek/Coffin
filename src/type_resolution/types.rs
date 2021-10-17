@@ -94,15 +94,17 @@ impl TypeTable {
 
     pub fn new_type(&mut self, r#type: Type) -> TypeId {
         self.types.push(r#type);
-        self.max_type_id.next()
+        self.max_type_id.increase()
     }
 
     pub fn type_id(&self, id: Id) -> TypeId {
         self.ast_types[usize::from(id)]
     }
 
-    pub fn set_type_id(&mut self, id: Id, type_id: TypeId) {
+    /// Returns back the passed type_id
+    pub fn set_type_id(&mut self, id: Id, type_id: TypeId) -> TypeId {
         self.ast_types[usize::from(id)] = type_id;
+        type_id
     }
 
     pub fn var_type_id(&self, id: VariableId) -> (TypeId, StorageClass) {

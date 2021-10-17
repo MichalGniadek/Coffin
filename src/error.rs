@@ -82,8 +82,8 @@ impl CoffinError {
                 msg: format!("Wrong types for '{}': {} and {}", op, left_type, right_type),
                 main_span: Some(left_span),
                 labels: vec![
-                    (format!("{}", left_type), left_span),
-                    (format!("{}", right_type), right_span),
+                    (left_type.to_string(), left_span),
+                    (right_type.to_string(), right_span),
                 ],
             },
             CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(span) => ErrorMessage {

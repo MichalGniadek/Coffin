@@ -55,7 +55,7 @@ impl DebugPrint<'_, '_, '_> {
             Some(map) => match (map.var_id(name), map.type_id(name)) {
                 (Some(id), _) => format!("@{}", usize::from(id)),
                 (_, Some(id)) => format!("@T{}", usize::from(id)),
-                _ => format!("@X"),
+                _ => "@X".into(),
             },
             None => String::new(),
         };
@@ -111,9 +111,9 @@ impl DebugPrint<'_, '_, '_> {
         }
     }
 
-    fn print_access(&mut self, access: &Vec<AccessType>) -> String {
+    fn print_access(&mut self, access: &[AccessType]) -> String {
         access
-            .into_iter()
+            .iter()
             .map(|a| match a {
                 AccessType::Dot(id, name) => format!(
                     ".{}{}{}",
@@ -138,7 +138,7 @@ impl ItemVisitor for DebugPrint<'_, '_, '_> {
         attrs: &Attrs,
         name: Name,
         paren_id: Id,
-        params: &Vec<Field>,
+        params: &[Field],
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
@@ -217,11 +217,11 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
         format!("({}){}", self.visit_expr(expr), self.print_access(access))
     }
 
-    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
+    fn assign(&mut self, id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out {
         format!(
             "(({}){} {}= {}){}",
             self.visit_expr(left),
@@ -244,7 +244,7 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         format!("{}#{}{}", self.span(id), i, self.r#type(id))
     }
 
-    fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
+    fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
         self.indent.push('\t');
         let indent = self.indent.clone();
 
@@ -276,7 +276,7 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         )
     }
 
-    fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out {
         format!(
             "({}{}({})){}",
             self.name(name),

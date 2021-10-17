@@ -79,7 +79,7 @@ impl Attrs {
         };
         match self {
             Attrs::None | Attrs::Error(_) => vec![],
-            Attrs::Ok(_, attrs) => attrs.into_iter().filter(|a| a.0.spur == name).collect(),
+            Attrs::Ok(_, attrs) => attrs.iter().filter(|a| a.0.spur == name).collect(),
         }
     }
 }
@@ -206,7 +206,7 @@ pub trait ItemVisitor {
         attrs: &Attrs,
         name: Name,
         paren_id: Id,
-        params: &Vec<Field>,
+        params: &[Field],
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out;
@@ -254,14 +254,14 @@ pub trait ExprVisitor {
         eq_id: Id,
         expr: &Expr,
     ) -> Self::Out;
-    fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out;
-    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out;
+    fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out;
+    fn assign(&mut self, id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out;
     fn identifier(&mut self, name: Name) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
-    fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out;
+    fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out;
     fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out;
-    fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out;
+    fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out;
     fn r#if(
         &mut self,
         id: Id,

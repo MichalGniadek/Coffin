@@ -23,7 +23,7 @@ impl ItemVisitor for SpanGetter<'_> {
         attrs: &Attrs,
         _name: Name,
         _paren_id: Id,
-        _params: &Vec<Field>,
+        _params: &[Field],
         _ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
@@ -67,7 +67,7 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[let_id].start..self.visit_expr(expr).end
     }
 
-    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
         let mut span = self.visit_expr(expr);
         if let Some(a) = access.last() {
             span.end = match a {
@@ -78,13 +78,7 @@ impl ExprVisitor for SpanGetter<'_> {
         span
     }
 
-    fn assign(
-        &mut self,
-        _id: Id,
-        left: &Expr,
-        _access: &Vec<AccessType>,
-        right: &Expr,
-    ) -> Self::Out {
+    fn assign(&mut self, _id: Id, left: &Expr, _access: &[AccessType], right: &Expr) -> Self::Out {
         self.visit_expr(left).start..self.visit_expr(right).end
     }
 
@@ -100,7 +94,7 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[id].clone()
     }
 
-    fn block(&mut self, id: Id, _exprs: &Vec<Expr>) -> Self::Out {
+    fn block(&mut self, id: Id, _exprs: &[Expr]) -> Self::Out {
         self.0[id].clone()
     }
 
@@ -108,7 +102,7 @@ impl ExprVisitor for SpanGetter<'_> {
         self.visit_expr(expr).start..self.0[r#type.id].end
     }
 
-    fn call(&mut self, id: Id, name: Name, _args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, id: Id, name: Name, _args: &[Expr]) -> Self::Out {
         self.0[name.id].start..self.0[id].end
     }
 

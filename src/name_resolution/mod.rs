@@ -116,7 +116,7 @@ impl ItemVisitor for NameResolution<'_> {
         _attrs: &Attrs,
         name: Name,
         _paren_id: Id,
-        params: &Vec<Field>,
+        params: &[Field],
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
@@ -181,7 +181,7 @@ impl ExprVisitor for NameResolution<'_> {
         self.new_variable(name);
     }
 
-    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
         self.visit_expr(expr);
         for a in access {
             if let AccessType::Index(_, expr) = a {
@@ -192,13 +192,7 @@ impl ExprVisitor for NameResolution<'_> {
         }
     }
 
-    fn assign(
-        &mut self,
-        _id: Id,
-        left: &Expr,
-        access: &Vec<AccessType>,
-        right: &Expr,
-    ) -> Self::Out {
+    fn assign(&mut self, _id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out {
         self.visit_expr(left);
         for a in access {
             if let AccessType::Index(_, expr) = a {
@@ -224,7 +218,7 @@ impl ExprVisitor for NameResolution<'_> {
     fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
     fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
 
-    fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
+    fn block(&mut self, _id: Id, exprs: &[Expr]) -> Self::Out {
         self.var_scope.push();
         for e in exprs {
             self.visit_expr(e);
@@ -243,7 +237,7 @@ impl ExprVisitor for NameResolution<'_> {
         }
     }
 
-    fn call(&mut self, _id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, _id: Id, name: Name, args: &[Expr]) -> Self::Out {
         if let Some(var_id) = self.var_scope.find(name.spur) {
             self.names.set_var(name, *var_id);
         } else if let Some(type_id) = self.type_scope.find(name.spur) {

@@ -2,12 +2,12 @@ use crate::ast::Id;
 use logos::Span;
 use std::ops::{Index, IndexMut};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SpanTable(Vec<Span>);
 
 impl SpanTable {
     pub fn new() -> Self {
-        Self(vec![])
+        Self::default()
     }
 
     pub fn push(&mut self, value: Span) -> Id {

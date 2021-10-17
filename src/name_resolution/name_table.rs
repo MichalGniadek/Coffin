@@ -45,11 +45,11 @@ impl NameTable {
     }
 
     pub(super) fn new_variable(&mut self) -> VariableId {
-        self.max_var_id.next()
+        self.max_var_id.increase()
     }
 
     pub(super) fn _new_type(&mut self) -> TypeId {
-        self.max_type_id.next()
+        self.max_type_id.increase()
     }
 }
 
@@ -70,8 +70,8 @@ impl NameTable {
 pub struct VariableId(usize);
 
 impl VariableId {
-    pub fn next(&mut self) -> Self {
-        let out = self.clone();
+    pub fn increase(&mut self) -> Self {
+        let out = *self;
         self.0 += 1;
         out
     }

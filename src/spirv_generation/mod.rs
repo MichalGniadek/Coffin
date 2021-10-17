@@ -4,7 +4,7 @@ use crate::{
     ast::{
         AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name,
     },
-    error::{internal_error, InternalError},
+    error::{internal_error, CoffinError, InternalError},
     lexer::Token,
     name_resolution::NameTable,
     type_id::{builtin_types, TypeId},
@@ -17,10 +17,14 @@ use rspirv::{
 };
 use spirv_ids_collections::{TypeSpirvIds, VariableSpirvIds};
 
-pub fn visit(ast: &mut Ast, variables: &NameTable, types: &TypeTable) -> Result<Module, ()> {
+pub fn visit<'ast>(
+    ast: &'ast mut Ast,
+    variables: &'_ NameTable,
+    types: &'_ TypeTable,
+) -> Result<Module, &'ast Vec<CoffinError>> {
     // You can't generate code if there are any errors
     if !ast.errors.is_empty() {
-        return Err(());
+        return Err(&ast.errors);
     }
 
     let mut spirv = SpirvGen {
@@ -156,7 +160,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         attrs: &Attrs,
         name: Name,
         _paren_id: Id,
-        params: &Vec<Field>,
+        params: &[Field],
         _ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
@@ -251,7 +255,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
                 self.code.decorate(
                     self.spirv_vars[var_id],
                     spirv::Decoration::DescriptorSet,
-                    &[dr::Operand::LiteralInt32(0 as u32)],
+                    &[dr::Operand::LiteralInt32(0u32)],
                 );
             }
             _ => todo!("Binding error."),
@@ -352,7 +356,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         Ok(0) // TODO: should return void id
     }
 
-    fn access(&mut self, _id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, _id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
         let mut type_id = self.types.type_id(expr.get_id());
         let mut spirv_id = self.visit_expr(expr)?;
         for a in access {
@@ -395,13 +399,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         Ok(spirv_id)
     }
 
-    fn assign(
-        &mut self,
-        _id: Id,
-        left: &Expr,
-        access: &Vec<AccessType>,
-        right: &Expr,
-    ) -> Self::Out {
+    fn assign(&mut self, _id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out {
         let right = self.visit_expr(right)?;
 
         let /*mut*/ type_id = self.types.type_id(left.get_id());
@@ -444,7 +442,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         Ok(self.code.constant_u32(type_id, i as u32))
     }
 
-    fn block(&mut self, _id: Id, exprs: &Vec<Expr>) -> Self::Out {
+    fn block(&mut self, _id: Id, exprs: &[Expr]) -> Self::Out {
         match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(id) => id,
             None => Ok(0), // TODO: should return void id
@@ -474,7 +472,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn call(&mut self, _id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, _id: Id, name: Name, args: &[Expr]) -> Self::Out {
         if let Some(_var_id) = self.names.var_id(name) {
             todo!("Function calls not supported")
         } else if let Some(type_id) = self.names.type_id(name) {

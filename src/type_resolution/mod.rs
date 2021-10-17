@@ -42,7 +42,7 @@ struct TypeResolution<'ast, 'vars> {
 }
 
 impl TypeResolution<'_, '_> {
-    fn access_type(&mut self, access: &Vec<AccessType>, mut type_id: TypeId) -> TypeId {
+    fn access_type(&mut self, access: &[AccessType], mut type_id: TypeId) -> TypeId {
         for (i, a) in access.iter().enumerate() {
             match a {
                 AccessType::Dot(id, member) => {
@@ -95,9 +95,9 @@ impl TypeResolution<'_, '_> {
                                 type_id = vec_type;
                             } else {
                                 self.errors.push(CoffinError::MismatchedType {
-                                    span: ast_span::get_expr_span(&expr, &self.spans),
-                                    expected: format!("{}", self.types[builtin_types::INT_ID]),
-                                    got: format!("{}", self.types[expr_type]),
+                                    span: ast_span::get_expr_span(expr, self.spans),
+                                    expected: self.types[builtin_types::INT_ID].to_string(),
+                                    got: self.types[expr_type].to_string(),
                                 });
                                 return builtin_types::ERROR_ID;
                             }
@@ -105,9 +105,9 @@ impl TypeResolution<'_, '_> {
                         Type::Image() => {
                             if expr_type != builtin_types::IVEC_ID[2] {
                                 self.errors.push(CoffinError::MismatchedType {
-                                    span: ast_span::get_expr_span(&expr, &self.spans),
-                                    expected: format!("{}", self.types[builtin_types::IVEC_ID[2]]),
-                                    got: format!("{}", self.types[expr_type]),
+                                    span: ast_span::get_expr_span(expr, self.spans),
+                                    expected: self.types[builtin_types::IVEC_ID[2]].to_string(),
+                                    got: self.types[expr_type].to_string(),
                                 });
                                 return builtin_types::ERROR_ID;
                             } else {
@@ -137,14 +137,14 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         attrs: &Attrs,
         name: Name,
         paren_id: Id,
-        params: &Vec<Field>,
+        params: &[Field],
         ret: &Option<(Id, Name)>,
         body: &Expr,
     ) -> Self::Out {
         let mut param_types = vec![];
 
         let compute = attrs.get_attr(self.rodeo.get("compute"));
-        if compute.len() == 0 {
+        if compute.is_empty() {
             for param in params {
                 let type_id = self
                     .names
@@ -272,8 +272,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             }
         };
 
-        self.types.set_type_id(id, type_id);
-        type_id
+        self.types.set_type_id(id, type_id)
     }
 
     fn r#let(
@@ -290,18 +289,16 @@ impl ExprVisitor for TypeResolution<'_, '_> {
                 .set_var_type_id(var_id, type_id, StorageClass::Function);
         }
 
-        self.types.set_type_id(let_id, builtin_types::UNIT_ID);
-        builtin_types::UNIT_ID
+        self.types.set_type_id(let_id, builtin_types::UNIT_ID)
     }
 
-    fn access(&mut self, id: Id, expr: &Expr, access: &Vec<AccessType>) -> Self::Out {
+    fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
         let type_id = self.visit_expr(expr);
         let type_id = self.access_type(access, type_id);
-        self.types.set_type_id(id, type_id);
-        type_id
+        self.types.set_type_id(id, type_id)
     }
 
-    fn assign(&mut self, id: Id, left: &Expr, access: &Vec<AccessType>, right: &Expr) -> Self::Out {
+    fn assign(&mut self, id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out {
         let expr_type_id = self.visit_expr(right);
         let var_type_id = self.visit_expr(left);
         let var_type_id = self.access_type(access, var_type_id);
@@ -318,37 +315,32 @@ impl ExprVisitor for TypeResolution<'_, '_> {
             });
         }
 
-        self.types.set_type_id(id, builtin_types::UNIT_ID);
-        builtin_types::UNIT_ID
+        self.types.set_type_id(id, builtin_types::UNIT_ID)
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
         if let Some(var_id) = self.names.var_id(name) {
             let (type_id, _) = self.types.var_type_id(var_id);
-            self.types.set_type_id(name.id, type_id);
-            type_id
+            self.types.set_type_id(name.id, type_id)
         } else {
             builtin_types::ERROR_ID
         }
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::FLOAT_ID);
-        builtin_types::FLOAT_ID
+        self.types.set_type_id(id, builtin_types::FLOAT_ID)
     }
 
     fn int(&mut self, id: Id, _i: i32) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::INT_ID);
-        builtin_types::INT_ID
+        self.types.set_type_id(id, builtin_types::INT_ID)
     }
 
-    fn block(&mut self, id: Id, exprs: &Vec<Expr>) -> Self::Out {
+    fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
         let type_id = match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(expr_id) => expr_id,
             None => builtin_types::UNIT_ID,
         };
-        self.types.set_type_id(id, type_id);
-        type_id
+        self.types.set_type_id(id, type_id)
     }
 
     fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out {
@@ -363,12 +355,10 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
         match (expr_type, after_type) {
             (Type::Int, Type::Float) | (Type::UInt, Type::Float) => {
-                self.types.set_type_id(id, type_id);
-                type_id
+                self.types.set_type_id(id, type_id)
             }
             (Type::Vector(mem0, _), Type::Vector(mem1, _)) if mem0.len() == mem1.len() => {
-                self.types.set_type_id(id, type_id);
-                type_id
+                self.types.set_type_id(id, type_id)
             }
             _ => todo!(
                 "Convert type error, before: {:?}, after: {:?}",
@@ -378,7 +368,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         }
     }
 
-    fn call(&mut self, id: Id, name: Name, args: &Vec<Expr>) -> Self::Out {
+    fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out {
         if let Some(_var_id) = self.names.var_id(name) {
             todo!("Function calls not supported")
         } else if let Some(type_id) = self.names.type_id(name) {
@@ -396,8 +386,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
                 _ => todo!(),
             }
 
-            self.types.set_type_id(id, type_id);
-            type_id
+            self.types.set_type_id(id, type_id)
         } else {
             todo!("err");
         }
@@ -410,12 +399,10 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         _block: &Expr,
         r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::UNIT_ID);
-        builtin_types::UNIT_ID
+        self.types.set_type_id(id, builtin_types::UNIT_ID)
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::ERROR_ID);
-        builtin_types::ERROR_ID
+        self.types.set_type_id(id, builtin_types::ERROR_ID)
     }
 }

@@ -7,8 +7,8 @@ impl TypeId {
         Self::default()
     }
 
-    pub fn next(&mut self) -> Self {
-        let out = self.clone();
+    pub fn increase(&mut self) -> Self {
+        let out = *self;
         self.0 += 1;
         out
     }

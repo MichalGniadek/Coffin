@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 pub fn visit(ast: &mut Ast) -> NameTable {
     let mut nr = NameResolution {
-        names: NameTable::new(),
+        names: NameTable::default(),
 
         var_scope: Scopes::new(),
         type_scope: Scopes::new_with_builtin_types(&ast.rodeo),
@@ -44,7 +44,7 @@ impl<T> Scopes<T> {
     }
 
     fn insert(&mut self, name: Spur, id: T) {
-        self.0.last_mut().unwrap().insert(name, id);
+        self.0.last_mut().ice_expect("No scope").insert(name, id);
     }
 
     fn find(&self, name: Spur) -> Option<&T> {
@@ -75,8 +75,8 @@ impl Scopes<TypeId> {
             ("image2d", IMAGE_ID),
             ("Id", ID_ID),
         ] {
-            if let Some(spur) = rodeo.get(name) {
-                slf.0.last_mut().unwrap().insert(spur, id);
+            if let Some(name) = rodeo.get(name) {
+                slf.insert(name, id);
             }
         }
         slf

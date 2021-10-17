@@ -4,13 +4,19 @@ pub struct TypeId(usize);
 impl TypeId {
     /// Returns a new typeId, with index larger than all of the builtin types.
     pub fn new() -> Self {
-        Self(18)
+        Self::default()
     }
 
     pub fn next(&mut self) -> Self {
         let out = self.clone();
         self.0 += 1;
         out
+    }
+}
+
+impl Default for TypeId {
+    fn default() -> Self {
+        builtin_types::MAX_TYPE_ID
     }
 }
 
@@ -36,4 +42,6 @@ pub mod builtin_types {
     pub const ID_ID: TypeId = UVEC_ID[3];
 
     pub const IMAGE_ID: TypeId = TypeId(17);
+
+    pub(super) const MAX_TYPE_ID: TypeId = TypeId(18);
 }

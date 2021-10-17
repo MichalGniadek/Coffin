@@ -4,16 +4,9 @@ use crate::{
 };
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VariableId(usize);
-
-impl From<VariableId> for usize {
-    fn from(id: VariableId) -> Self {
-        id.0
-    }
-}
-
-#[derive(Debug, Clone)]
+/// Keeps track of VariableIds to TypeIds
+/// and maps them to Ast
+#[derive(Debug, Clone, Default)]
 pub struct NameTable {
     variables: HashMap<Id, VariableId>,
     max_var_id: VariableId,
@@ -23,10 +16,12 @@ pub struct NameTable {
 }
 
 impl NameTable {
+    /// Get VariableId (if it exists) from an ast node
     pub fn var_id(&self, name: Name) -> Option<VariableId> {
         self.variables.get(&name.id).cloned()
     }
 
+    /// Get TypeId (if it exists) from an ast node
     pub fn type_id(&self, name: Name) -> Option<TypeId> {
         self.types.get(&name.id).cloned()
     }
@@ -41,16 +36,6 @@ impl NameTable {
 }
 
 impl NameTable {
-    pub(super) fn new() -> Self {
-        Self {
-            variables: HashMap::new(),
-            max_var_id: VariableId(0),
-
-            types: HashMap::new(),
-            max_type_id: TypeId::new(),
-        }
-    }
-
     pub(super) fn set_var(&mut self, name: Name, var_id: VariableId) {
         self.variables.insert(name.id, var_id);
     }
@@ -60,12 +45,40 @@ impl NameTable {
     }
 
     pub(super) fn new_variable(&mut self) -> VariableId {
-        let out = self.max_var_id;
-        self.max_var_id.0 += 1;
-        out
+        self.max_var_id.next()
     }
 
     pub(super) fn _new_type(&mut self) -> TypeId {
         self.max_type_id.next()
+    }
+}
+
+///Represents a variable taking into an account names and scopes
+///```text
+/// let a; //0
+/// let b; //1
+/// {
+///     let a; //2
+///     a;     //2
+///     let a; //3
+///     a;     //3
+///     b;     //1
+/// }
+/// a; //0
+///```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct VariableId(usize);
+
+impl VariableId {
+    pub fn next(&mut self) -> Self {
+        let out = self.clone();
+        self.0 += 1;
+        out
+    }
+}
+
+impl From<VariableId> for usize {
+    fn from(id: VariableId) -> Self {
+        id.0
     }
 }

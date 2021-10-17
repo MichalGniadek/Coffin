@@ -34,100 +34,93 @@ pub enum CoffinError {
     IncorrectVectorFields(Span),
 }
 
+struct ErrorMessage<'a> {
+    msg: String,
+    main_span: Option<&'a Span>,
+    labels: Vec<(String, &'a Span)>,
+}
+
 impl CoffinError {
-    fn get_msg(&self) -> (String, Option<&Span>, Vec<(String, &Span)>) {
+    fn get_msg(&self) -> ErrorMessage {
         match self {
-            CoffinError::IOError(err) => (format!("IO Error: '{}'", err), None, vec![]),
-            CoffinError::ParserError(kind, span) => match kind {
-                ParserErrorKind::ExpectedPrefixToken => (
-                    "Expected prefix token.".into(),
-                    Some(span),
-                    vec![("here".into(), span)],
-                ),
-                ParserErrorKind::ExpectedToken(token) => (
-                    format!("Expected {}.", token),
-                    Some(span),
-                    vec![("here".into(), span)],
-                ),
-                ParserErrorKind::ExpressionNotAssignable => (
-                    "Expression not assignable.".into(),
-                    Some(span),
-                    vec![("here".into(), span)],
-                ),
-                ParserErrorKind::ExpectedItem => (
-                    "Expected item.".into(),
-                    Some(span),
-                    vec![("here".into(), span)],
-                ),
+            CoffinError::IOError(err) => ErrorMessage {
+                msg: format!("IO Error: '{}'", err),
+                main_span: None,
+                labels: vec![],
             },
-            CoffinError::UndeclaredVariable(span) => (
-                "Undeclared variable.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::UndeclaredType(span) => (
-                "Undeclared type.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
+            CoffinError::ParserError(kind, span) => ErrorMessage {
+                msg: kind.to_string(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::UndeclaredVariable(span) => ErrorMessage {
+                msg: "Undeclared variable.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::UndeclaredType(span) => ErrorMessage {
+                msg: "Undeclared type.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
             CoffinError::MismatchedType {
                 span,
                 expected,
                 got,
-            } => (
-                format!("Mismatched type. Expected: {}, got: {}.", expected, got),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
+            } => ErrorMessage {
+                msg: format!("Mismatched type. Expected: {}, got: {}.", expected, got),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
             CoffinError::WrongTypesForOperator {
                 op,
                 left_span,
                 left_type,
                 right_span,
                 right_type,
-            } => (
-                format!("Wrong types for '{}': {} and {}", op, left_type, right_type),
-                Some(left_span),
-                vec![
+            } => ErrorMessage {
+                msg: format!("Wrong types for '{}': {} and {}", op, left_type, right_type),
+                main_span: Some(left_span),
+                labels: vec![
                     (format!("{}", left_type), left_span),
                     (format!("{}", right_type), right_span),
                 ],
-            ),
-            CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(span) => (
-                "Compute function must have only one paramter of type Id.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::MoreThanOneAttribute(string, span) => (
-                format!("More than one {} attribute", string),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::SwizzleNotAtTheEnd(span) => (
-                "Swizzle not at the end.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::TypeDoesntHaveFields(span) => (
-                "Type doesn't have fields.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::TypeCantBeIndexed(span) => (
-                "Type can't be indexed.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
-            CoffinError::IncorrectVectorFields(span) => (
-                "Incorrect vector fields.".into(),
-                Some(span),
-                vec![("here".into(), span)],
-            ),
+            },
+            CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(span) => ErrorMessage {
+                msg: "Compute function must have only one paramter of type Id.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::MoreThanOneAttribute(string, span) => ErrorMessage {
+                msg: format!("More than one {} attribute", string),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::SwizzleNotAtTheEnd(span) => ErrorMessage {
+                msg: "Swizzle not at the end.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::TypeDoesntHaveFields(span) => ErrorMessage {
+                msg: "Type doesn't have fields.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::TypeCantBeIndexed(span) => ErrorMessage {
+                msg: "Type can't be indexed.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
+            CoffinError::IncorrectVectorFields(span) => ErrorMessage {
+                msg: "Incorrect vector fields.".into(),
+                main_span: Some(span),
+                labels: vec![("here".into(), span)],
+            },
         }
     }
 
     pub fn report(&self) -> Diagnostic<()> {
-        let (msg, _, labels) = self.get_msg();
+        let ErrorMessage { msg, labels, .. } = self.get_msg();
 
         let labels = labels
             .iter()
@@ -140,8 +133,8 @@ impl CoffinError {
 
 impl Display for CoffinError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (msg, span, _) = self.get_msg();
-        let span = match span {
+        let ErrorMessage { msg, main_span, .. } = self.get_msg();
+        let span = match main_span {
             Some(span) => format!(" [{:?}]", span),
             None => format!(""),
         };
@@ -150,6 +143,12 @@ impl Display for CoffinError {
 }
 
 impl Error for CoffinError {}
+
+impl From<std::io::Error> for CoffinError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IOError(err)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ParserErrorKind {
@@ -164,6 +163,19 @@ impl ParserErrorKind {
         Self::ExpectedToken(Token::Identifier(Spur::default()))
     }
 }
+
+impl Display for ParserErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserErrorKind::ExpectedPrefixToken => write!(f, "Expected prefix token."),
+            ParserErrorKind::ExpectedToken(token) => write!(f, "Expected {}.", token),
+            ParserErrorKind::ExpressionNotAssignable => write!(f, "Expression not assignable."),
+            ParserErrorKind::ExpectedItem => write!(f, "Expected item."),
+        }
+    }
+}
+
+impl Error for ParserErrorKind {}
 
 pub fn internal_error(msg: &str) -> ! {
     panic!(

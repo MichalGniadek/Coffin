@@ -408,12 +408,13 @@ impl ExprVisitor for TypeResolution<'_, '_> {
 
     fn r#if(
         &mut self,
-        _id: Id,
+        id: Id,
         _condition: &Expr,
         _block: &Expr,
         r#_else: Option<(Id, &Expr)>,
     ) -> Self::Out {
-        todo!()
+        self.types.set_type_id(id, builtin_types::VOID_ID);
+        builtin_types::VOID_ID
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {

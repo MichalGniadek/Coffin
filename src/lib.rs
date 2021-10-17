@@ -1,4 +1,3 @@
-#![feature(iter_intersperse)]
 pub mod ast;
 pub mod ast_span;
 pub mod debug_print;
@@ -25,7 +24,7 @@ pub fn compile_file(path: &Path) -> Result<Vec<u32>, Vec<CoffinError>> {
     let src = match fs::read_to_string(path) {
         Ok(src) => src,
         Err(err) => {
-            return Err(vec![CoffinError::IOError(err)]);
+            return Err(vec![err.into()]);
         }
     };
 
@@ -40,21 +39,9 @@ pub fn compile_file(path: &Path) -> Result<Vec<u32>, Vec<CoffinError>> {
     }
 }
 
-pub fn write_spirv_binary(spirv: &[u32], path: &Path) -> Result<(), CoffinError> {
-    let (head, body, tail) = unsafe { spirv.align_to::<u8>() };
-    // Make sure alignment is correct.
-    assert!(head.is_empty() && tail.is_empty());
-    fs::write(path, body).unwrap();
-    Ok(())
-}
-
-pub fn write_spirv_diss(spirv: &[u32], path: &Path) -> Result<(), CoffinError> {
+pub fn get_disassembly(spirv: &[u32]) -> Result<String, spirv_tools::error::Error> {
     let ass = assembler::create(Some(spirv_tools::TargetEnv::Universal_1_5));
-    let diss = ass
-        .disassemble(spirv, DisassembleOptions::default())
-        .unwrap();
-    fs::write(path, diss).unwrap();
-    Ok(())
+    ass.disassemble(spirv, DisassembleOptions::default())
 }
 
 pub fn validate_spirv(spirv: &[u32]) -> Result<(), ValidatorError> {

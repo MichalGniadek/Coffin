@@ -23,6 +23,7 @@ struct Opt {
 
     /// Optional output file
     #[structopt(parse(from_os_str))]
+    #[allow(unused)]
     output: Option<PathBuf>,
 
     /// Validate spirv output
@@ -44,8 +45,7 @@ fn main() {
     let src = match fs::read_to_string(&opt.input) {
         Ok(src) => src,
         Err(err) => {
-            let file = SimpleFile::new("", "");
-            exit_with_errors(&file, &[CoffinError::IOError(err)]);
+            exit_with_errors(&SimpleFile::new("", ""), &[CoffinError::IOError(err)]);
         }
     };
 
@@ -95,10 +95,7 @@ fn main() {
     }
 }
 
-fn exit_with_errors<'f, F>(files: &'f F, errors: &[CoffinError]) -> !
-where
-    F: Files<'f, FileId = ()>,
-{
+fn exit_with_errors<'f>(files: &'f impl Files<'f, FileId = ()>, errors: &[CoffinError]) -> ! {
     let writer = StandardStream::stderr(ColorChoice::Always);
     let config = Config::default();
     for err in errors {

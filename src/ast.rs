@@ -175,6 +175,7 @@ pub trait ItemVisitor {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn fun(
         &mut self,
         fun_id: Id,

@@ -176,23 +176,3 @@ impl Display for ParserErrorKind {
 }
 
 impl Error for ParserErrorKind {}
-
-pub fn internal_error(msg: &str) -> ! {
-    panic!(
-        "Internal compiler error. This is a bug please report it.\n{}",
-        msg
-    )
-}
-
-pub trait InternalError<T> {
-    fn ice_expect(self, msg: &str) -> T;
-}
-
-impl<T> InternalError<T> for Option<T> {
-    fn ice_expect(self, msg: &str) -> T {
-        match self {
-            Some(val) => val,
-            None => internal_error(msg),
-        }
-    }
-}

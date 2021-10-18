@@ -40,6 +40,10 @@ struct Opt {
 }
 
 fn main() {
+    std::panic::set_hook(Box::new(|info| {
+        println!("Internal compiler error: {}", info)
+    }));
+
     let opt = Opt::from_args();
 
     let src = match fs::read_to_string(&opt.input) {

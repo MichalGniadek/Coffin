@@ -7,7 +7,7 @@ use crate::{
         ItemVisitorSimple, Name,
     },
     ast_span,
-    error::{CoffinError, InternalError},
+    error::CoffinError,
     name_resolution::NameTable,
     parser::spans_table::SpanTable,
     type_id::{builtin, TypeId},
@@ -211,7 +211,7 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
         let var_id = self
             .names
             .var_id(name)
-            .ice_expect("No variable id for fun name.");
+            .expect("No variable id for fun name.");
 
         // Storage class here is hacky
         self.types

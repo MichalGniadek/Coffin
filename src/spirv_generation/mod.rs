@@ -5,7 +5,7 @@ use crate::{
         AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, ExprVisitorSimple, Field, Id, Item,
         ItemVisitor, ItemVisitorSimple, Name,
     },
-    error::{internal_error, CoffinError, InternalError},
+    error::CoffinError,
     lexer::Token,
     name_resolution::NameTable,
     type_id::{builtin, TypeId},
@@ -56,7 +56,7 @@ pub fn visit<'ast>(
             if let Item::Uniform(_, attrs, field) = item {
                 match ItemVisitorSimple::uniform(&mut spirv, attrs, field) {
                     Ok(id) => Some(id),
-                    Err(err) => internal_error(&format!("Builder error: {}", err)),
+                    Err(err) => panic!("Builder error: {}", err),
                 }
             } else {
                 None
@@ -71,7 +71,7 @@ pub fn visit<'ast>(
         .filter(|item| !matches!(item, Item::Uniform(_, _, _)))
     {
         if let Err(err) = spirv.visit_item(item) {
-            internal_error(&format!("Builder error: {}", err));
+            panic!("Builder error: {}", err);
         }
     }
 
@@ -97,7 +97,7 @@ impl SpirvGen<'_, '_, '_> {
         if self.spirv_types[type_id] == 0 {
             self.spirv_types[type_id] = match &self.types[type_id] {
                 Type::Unit => self.code.type_void(),
-                Type::Error => internal_error("Trying to get spirv id for Type::Error"),
+                Type::Error => panic!("Trying to get spirv id for Type::Error"),
                 Type::Int => self.code.type_int(32, 1),
                 Type::UInt => self.code.type_int(32, 0),
                 Type::Float => self.code.type_float(32),
@@ -166,12 +166,12 @@ impl ItemVisitorSimple for SpirvGen<'_, '_, '_> {
         let var_id = self
             .names
             .var_id(name)
-            .ice_expect("No variableId for function name.");
+            .expect("No variableId for function name.");
         let (type_id, _) = self.types.var_type_id(var_id);
         let fun_type_spirv_id = self.spirv_type_id(type_id, None);
         let return_type = match &self.types[type_id] {
             Type::Fun(fun) => self.spirv_type_id(fun.get_return_type(), None),
-            _ => internal_error("Function must have a Type::Fun type"),
+            _ => panic!("Function must have a Type::Fun type"),
         };
 
         let fun_spirv_id = self.code.begin_function(
@@ -183,10 +183,7 @@ impl ItemVisitorSimple for SpirvGen<'_, '_, '_> {
 
         let compute = attrs.get_attr(self.rodeo.get("compute"));
         if compute.len() == 1 {
-            let var_id = self
-                .names
-                .var_id(params[0].name)
-                .ice_expect("No variable id.");
+            let var_id = self.names.var_id(params[0].name).expect("No variable id.");
 
             let (type_id, storage_class) = self.types.var_type_id(var_id);
             let spirv_type_id = self.spirv_type_id(type_id, Some(storage_class));
@@ -234,7 +231,7 @@ impl ItemVisitorSimple for SpirvGen<'_, '_, '_> {
     }
 
     fn uniform(&mut self, attrs: &Attrs, field: &Field) -> Self::Out {
-        let var_id = self.names.var_id(field.name).ice_expect("No variable id.");
+        let var_id = self.names.var_id(field.name).expect("No variable id.");
         let (type_id, storage_class) = self.types.var_type_id(var_id);
         let type_id = self.spirv_type_id(type_id, Some(storage_class));
         self.spirv_vars[var_id] = self.code.variable(type_id, None, storage_class, None);
@@ -264,7 +261,7 @@ impl ItemVisitorSimple for SpirvGen<'_, '_, '_> {
     }
 
     fn item_error(&mut self, _id: Id) -> Self::Out {
-        internal_error("Spirv generation shouldn't be called with errors.")
+        panic!("Spirv generation shouldn't be called with errors.")
     }
 }
 
@@ -332,12 +329,12 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
             {
                 self.code.f_sub(spirv_type, None, left, right)
             }
-            _ => internal_error("Incorrect types and/or operation in binary."),
+            _ => panic!("Incorrect types and/or operation in binary."),
         }
     }
 
     fn r#let(&mut self, _id: Id, r#_mut: bool, name: Name, expr: &Expr) -> Self::Out {
-        let var_id = self.names.var_id(name).ice_expect("No variable id.");
+        let var_id = self.names.var_id(name).expect("No variable id.");
         let (type_id, storage_class) = self.types.var_type_id(var_id);
         let type_id = self.spirv_type_id(type_id, Some(storage_class));
         self.spirv_vars[var_id] = self.code.variable(type_id, None, storage_class, None);
@@ -363,7 +360,7 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
                                 members
                                     .iter()
                                     .position(|cc| *cc == c)
-                                    .ice_expect("No member in vector.")
+                                    .expect("No member in vector.")
                                     as u32
                             })
                             .collect();
@@ -383,7 +380,7 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
                                 .vector_shuffle(spirv_type, None, spirv_id, spirv_id, &indices)?
                         };
                     }
-                    _ => internal_error("Type without fields."),
+                    _ => panic!("Type without fields."),
                 },
                 AccessType::Index(_, _) => todo!(),
             }
@@ -406,7 +403,7 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
                         self.code.image_write(image, expr, right, None, &[])?;
                         return Ok(0);
                     }
-                    _ => internal_error("Type non indexable."),
+                    _ => panic!("Type non indexable."),
                 },
             }
         }
@@ -417,7 +414,7 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        let var_id = self.names.var_id(name).ice_expect("No variable id.");
+        let var_id = self.names.var_id(name).expect("No variable id.");
         let (type_id, _) = self.types.var_type_id(var_id);
         let type_id = self.spirv_type_id(type_id, None);
         let var = self.spirv_vars[var_id];
@@ -494,6 +491,6 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
     }
 
     fn expr_error(&mut self, _id: Id) -> Self::Out {
-        internal_error("Spirv generation shouldn't be called with errors.")
+        panic!("Spirv generation shouldn't be called with errors.")
     }
 }

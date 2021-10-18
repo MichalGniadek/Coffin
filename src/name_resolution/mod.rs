@@ -6,7 +6,7 @@ use crate::{
         AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, ExprVisitorSimple, Field, Id,
         ItemVisitor, ItemVisitorSimple, Name,
     },
-    error::{CoffinError, InternalError},
+    error::CoffinError,
     parser::spans_table::SpanTable,
     type_id::TypeId,
 };
@@ -43,11 +43,11 @@ impl<T> Scopes<T> {
     }
 
     fn pop(&mut self) {
-        self.0.pop().ice_expect("Called pop without scopes");
+        self.0.pop().expect("Called pop without scopes");
     }
 
     fn insert(&mut self, name: Spur, id: T) {
-        self.0.last_mut().ice_expect("No scope").insert(name, id);
+        self.0.last_mut().expect("No scope").insert(name, id);
     }
 
     fn find(&self, name: Name) -> Option<&T> {

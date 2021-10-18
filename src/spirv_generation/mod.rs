@@ -2,7 +2,8 @@ mod spirv_ids_collections;
 
 use crate::{
     ast::{
-        AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, Item, ItemVisitor, Name,
+        AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, ExprVisitorSimple, Field, Id, Item,
+        ItemVisitor, ItemVisitorSimple, Name,
     },
     error::{internal_error, CoffinError, InternalError},
     lexer::Token,
@@ -52,8 +53,8 @@ pub fn visit<'ast>(
         .items
         .iter()
         .filter_map(|item| {
-            if let Item::Uniform(unif_id, attrs, field) = item {
-                match spirv.uniform(*unif_id, attrs, field) {
+            if let Item::Uniform(_, attrs, field) = item {
+                match ItemVisitorSimple::uniform(&mut spirv, attrs, field) {
                     Ok(id) => Some(id),
                     Err(err) => internal_error(&format!("Builder error: {}", err)),
                 }
@@ -151,17 +152,15 @@ impl SpirvGen<'_, '_, '_> {
     }
 }
 
-impl ItemVisitor for SpirvGen<'_, '_, '_> {
+impl ItemVisitorSimple for SpirvGen<'_, '_, '_> {
     type Out = Result<u32, dr::Error>;
 
     fn fun(
         &mut self,
-        _fun_id: Id,
         attrs: &Attrs,
         name: Name,
-        _paren_id: Id,
         params: &[Field],
-        _ret: &Option<(Id, Name)>,
+        _ret: Option<Name>,
         body: &Expr,
     ) -> Self::Out {
         let var_id = self
@@ -234,7 +233,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
         Ok(fun_spirv_id)
     }
 
-    fn uniform(&mut self, _unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, attrs: &Attrs, field: &Field) -> Self::Out {
         let var_id = self.names.var_id(field.name).ice_expect("No variable id.");
         let (type_id, storage_class) = self.types.var_type_id(var_id);
         let type_id = self.spirv_type_id(type_id, Some(storage_class));
@@ -269,7 +268,7 @@ impl ItemVisitor for SpirvGen<'_, '_, '_> {
     }
 }
 
-impl ExprVisitor for SpirvGen<'_, '_, '_> {
+impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
     type Out = Result<u32, dr::Error>;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
@@ -337,14 +336,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         }
     }
 
-    fn r#let(
-        &mut self,
-        _let_id: Id,
-        _mut_id: Option<Id>,
-        name: Name,
-        _eq_id: Id,
-        expr: &Expr,
-    ) -> Self::Out {
+    fn r#let(&mut self, _id: Id, r#_mut: bool, name: Name, expr: &Expr) -> Self::Out {
         let var_id = self.names.var_id(name).ice_expect("No variable id.");
         let (type_id, storage_class) = self.types.var_type_id(var_id);
         let type_id = self.spirv_type_id(type_id, Some(storage_class));
@@ -496,7 +488,7 @@ impl ExprVisitor for SpirvGen<'_, '_, '_> {
         _id: Id,
         _condition: &Expr,
         _block: &Expr,
-        r#_else: Option<(Id, &Expr)>,
+        r#_else: Option<&Expr>,
     ) -> Self::Out {
         todo!()
     }

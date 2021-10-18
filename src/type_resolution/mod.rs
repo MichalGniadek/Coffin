@@ -2,7 +2,10 @@ pub mod types;
 
 use self::types::{Type, TypeTable};
 use crate::{
-    ast::{self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
+    ast::{
+        self, Ast, Attrs, BinOpKind, Expr, ExprVisitor, ExprVisitorSimple, Field, Id, ItemVisitor,
+        ItemVisitorSimple, Name,
+    },
     ast_span,
     error::{CoffinError, InternalError},
     name_resolution::NameTable,
@@ -128,17 +131,15 @@ impl TypeResolution<'_, '_> {
     }
 }
 
-impl ItemVisitor for TypeResolution<'_, '_> {
+impl ItemVisitorSimple for TypeResolution<'_, '_> {
     type Out = ();
 
     fn fun(
         &mut self,
-        fun_id: Id,
         attrs: &Attrs,
         name: Name,
-        paren_id: Id,
         params: &[Field],
-        ret: &Option<(Id, Name)>,
+        ret: Option<Name>,
         body: &Expr,
     ) -> Self::Out {
         let mut param_types = vec![];
@@ -161,7 +162,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
             if params.len() != 1 {
                 self.errors.push(
                     CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
-                        self.spans[paren_id].clone(),
+                        self.spans[params[1].name.id].start
+                            ..self.spans[params.last().unwrap().r#type.id].end,
                     ),
                 );
                 return;
@@ -194,9 +196,9 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         }
 
         let return_type = match ret {
-            Some((_, r#type)) => self
+            Some(r#type) => self
                 .names
-                .type_id(*r#type)
+                .type_id(r#type)
                 .unwrap_or(builtin_types::ERROR_ID),
             None => builtin_types::UNIT_ID,
         };
@@ -214,11 +216,11 @@ impl ItemVisitor for TypeResolution<'_, '_> {
         self.types
             .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
 
-        self.types.set_type_id(fun_id, type_id);
+        self.types.set_type_id(name.id, type_id);
         self.visit_expr(body);
     }
 
-    fn uniform(&mut self, unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, _attrs: &Attrs, field: &Field) -> Self::Out {
         let type_id = self
             .names
             .type_id(field.r#type)
@@ -228,7 +230,8 @@ impl ItemVisitor for TypeResolution<'_, '_> {
                 .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
         }
 
-        self.types.set_type_id(unif_id, builtin_types::UNIT_ID);
+        self.types
+            .set_type_id(field.name.id, builtin_types::UNIT_ID);
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
@@ -236,7 +239,7 @@ impl ItemVisitor for TypeResolution<'_, '_> {
     }
 }
 
-impl ExprVisitor for TypeResolution<'_, '_> {
+impl ExprVisitorSimple for TypeResolution<'_, '_> {
     type Out = TypeId;
 
     fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
@@ -275,21 +278,14 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         self.types.set_type_id(id, type_id)
     }
 
-    fn r#let(
-        &mut self,
-        let_id: Id,
-        _mut_id: Option<Id>,
-        name: Name,
-        _eq_id: Id,
-        expr: &Expr,
-    ) -> Self::Out {
+    fn r#let(&mut self, id: Id, r#_mut: bool, name: Name, expr: &Expr) -> Self::Out {
         let type_id = self.visit_expr(expr);
         if let Some(var_id) = self.names.var_id(name) {
             self.types
                 .set_var_type_id(var_id, type_id, StorageClass::Function);
         }
 
-        self.types.set_type_id(let_id, builtin_types::UNIT_ID)
+        self.types.set_type_id(id, builtin_types::UNIT_ID)
     }
 
     fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
@@ -397,7 +393,7 @@ impl ExprVisitor for TypeResolution<'_, '_> {
         id: Id,
         _condition: &Expr,
         _block: &Expr,
-        r#_else: Option<(Id, &Expr)>,
+        r#_else: Option<&Expr>,
     ) -> Self::Out {
         self.types.set_type_id(id, builtin_types::UNIT_ID)
     }

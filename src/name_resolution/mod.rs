@@ -2,7 +2,10 @@ pub mod name_table;
 pub use name_table::{NameTable, VariableId};
 
 use crate::{
-    ast::{AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, Field, Id, ItemVisitor, Name},
+    ast::{
+        AccessType, Ast, Attrs, BinOpKind, Expr, ExprVisitor, ExprVisitorSimple, Field, Id,
+        ItemVisitor, ItemVisitorSimple, Name,
+    },
     error::{CoffinError, InternalError},
     parser::spans_table::SpanTable,
     type_id::TypeId,
@@ -107,17 +110,15 @@ impl NameResolution<'_> {
     }
 }
 
-impl ItemVisitor for NameResolution<'_> {
+impl ItemVisitorSimple for NameResolution<'_> {
     type Out = ();
 
     fn fun(
         &mut self,
-        _fun_id: Id,
         _attrs: &Attrs,
         name: Name,
-        _paren_id: Id,
         params: &[Field],
-        ret: &Option<(Id, Name)>,
+        ret: Option<Name>,
         body: &Expr,
     ) -> Self::Out {
         self.new_variable(name);
@@ -134,9 +135,9 @@ impl ItemVisitor for NameResolution<'_> {
             }
         }
 
-        if let Some((_, name)) = ret {
+        if let Some(name) = ret {
             match self.type_scope.find(name.spur) {
-                Some(type_id) => self.names.set_type(*name, *type_id),
+                Some(type_id) => self.names.set_type(name, *type_id),
                 None => self
                     .errors
                     .push(CoffinError::UndeclaredType(self.spans[name.id].clone())),
@@ -147,7 +148,7 @@ impl ItemVisitor for NameResolution<'_> {
         self.var_scope.pop();
     }
 
-    fn uniform(&mut self, _unif_id: Id, _attrs: &Attrs, field: &Field) -> Self::Out {
+    fn uniform(&mut self, _attrs: &Attrs, field: &Field) -> Self::Out {
         self.new_variable(field.name);
 
         match self.type_scope.find(field.r#type.spur) {
@@ -161,7 +162,7 @@ impl ItemVisitor for NameResolution<'_> {
     fn item_error(&mut self, _id: Id) -> Self::Out {}
 }
 
-impl ExprVisitor for NameResolution<'_> {
+impl ExprVisitorSimple for NameResolution<'_> {
     type Out = ();
 
     fn binary(&mut self, _id: Id, _kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
@@ -169,14 +170,7 @@ impl ExprVisitor for NameResolution<'_> {
         self.visit_expr(right);
     }
 
-    fn r#let(
-        &mut self,
-        _let_id: Id,
-        _mut_id: Option<Id>,
-        name: Name,
-        _eq_id: Id,
-        expr: &Expr,
-    ) -> Self::Out {
+    fn r#let(&mut self, _id: Id, r#_mut: bool, name: Name, expr: &Expr) -> Self::Out {
         self.visit_expr(expr);
         self.new_variable(name);
     }
@@ -256,7 +250,7 @@ impl ExprVisitor for NameResolution<'_> {
         _id: Id,
         condition: &Expr,
         block: &Expr,
-        r#_else: Option<(Id, &Expr)>,
+        r#else: Option<&Expr>,
     ) -> Self::Out {
         self.var_scope.push();
         self.visit_expr(condition);
@@ -264,7 +258,7 @@ impl ExprVisitor for NameResolution<'_> {
         self.var_scope.push();
         self.visit_expr(block);
         self.var_scope.pop();
-        if let Some((_, r#else)) = r#_else {
+        if let Some(r#else) = r#else {
             self.var_scope.push();
             self.visit_expr(r#else);
             self.var_scope.pop();

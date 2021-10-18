@@ -141,31 +141,6 @@ pub enum Expr {
     Error(Id),
 }
 
-impl Expr {
-    pub fn get_id(&self) -> Id {
-        match self {
-            Expr::Binary(id, _, _, _) => *id,
-            Expr::Let {
-                let_id,
-                mut_id: _,
-                name: _,
-                eq_id: _,
-                expr: _,
-            } => *let_id,
-            Expr::Access(id, _, _) => *id,
-            Expr::Assign(id, _, _, _) => *id,
-            Expr::Identifier(name) => name.id,
-            Expr::Float(id, _) => *id,
-            Expr::Int(id, _) => *id,
-            Expr::Block(id, _) => *id,
-            Expr::Convert(id, _, _) => *id,
-            Expr::Call(id, _, _) => *id,
-            Expr::If(id, _, _, _) => *id,
-            Expr::Error(id) => *id,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum Item {
     Fun {
@@ -212,6 +187,46 @@ pub trait ItemVisitor {
     ) -> Self::Out;
     fn uniform(&mut self, unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out;
     fn item_error(&mut self, id: Id) -> Self::Out;
+}
+
+pub trait ItemVisitorSimple {
+    type Out;
+
+    fn fun(
+        &mut self,
+        attrs: &Attrs,
+        name: Name,
+        params: &[Field],
+        ret: Option<Name>,
+        body: &Expr,
+    ) -> Self::Out;
+    fn uniform(&mut self, attrs: &Attrs, field: &Field) -> Self::Out;
+    fn item_error(&mut self, id: Id) -> Self::Out;
+}
+
+impl<V: ItemVisitorSimple> ItemVisitor for V {
+    type Out = <V as ItemVisitorSimple>::Out;
+
+    fn fun(
+        &mut self,
+        _fun_id: Id,
+        attrs: &Attrs,
+        name: Name,
+        _paren_id: Id,
+        params: &[Field],
+        ret: &Option<(Id, Name)>,
+        body: &Expr,
+    ) -> Self::Out {
+        self.fun(attrs, name, params, ret.map(|(_, name)| name), body)
+    }
+
+    fn uniform(&mut self, _unif_id: Id, attrs: &Attrs, field: &Field) -> Self::Out {
+        self.uniform(attrs, field)
+    }
+
+    fn item_error(&mut self, id: Id) -> Self::Out {
+        self.item_error(id)
+    }
 }
 
 pub trait ExprVisitor {
@@ -270,4 +285,154 @@ pub trait ExprVisitor {
         r#else: Option<(Id, &Expr)>,
     ) -> Self::Out;
     fn expr_error(&mut self, id: Id) -> Self::Out;
+}
+
+pub trait ExprVisitorSimple {
+    type Out;
+
+    fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out;
+    fn r#let(&mut self, id: Id, r#mut: bool, name: Name, expr: &Expr) -> Self::Out;
+    fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out;
+    fn assign(&mut self, id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out;
+    fn identifier(&mut self, name: Name) -> Self::Out;
+    fn float(&mut self, id: Id, f: f32) -> Self::Out;
+    fn int(&mut self, id: Id, i: i32) -> Self::Out;
+    fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out;
+    fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out;
+    fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out;
+    fn r#if(&mut self, id: Id, condition: &Expr, block: &Expr, r#else: Option<&Expr>) -> Self::Out;
+    fn expr_error(&mut self, id: Id) -> Self::Out;
+}
+
+impl<V: ExprVisitorSimple> ExprVisitor for V {
+    type Out = <V as ExprVisitorSimple>::Out;
+
+    fn binary(&mut self, id: Id, kind: BinOpKind, left: &Expr, right: &Expr) -> Self::Out {
+        self.binary(id, kind, left, right)
+    }
+
+    fn r#let(
+        &mut self,
+        let_id: Id,
+        mut_id: Option<Id>,
+        name: Name,
+        _eq_id: Id,
+        expr: &Expr,
+    ) -> Self::Out {
+        self.r#let(let_id, mut_id.is_some(), name, expr)
+    }
+
+    fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
+        self.access(id, expr, access)
+    }
+
+    fn assign(&mut self, id: Id, left: &Expr, access: &[AccessType], right: &Expr) -> Self::Out {
+        self.assign(id, left, access, right)
+    }
+
+    fn identifier(&mut self, name: Name) -> Self::Out {
+        self.identifier(name)
+    }
+
+    fn float(&mut self, id: Id, f: f32) -> Self::Out {
+        self.float(id, f)
+    }
+
+    fn int(&mut self, id: Id, i: i32) -> Self::Out {
+        self.int(id, i)
+    }
+
+    fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
+        self.block(id, exprs)
+    }
+
+    fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out {
+        self.convert(id, expr, r#type)
+    }
+
+    fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out {
+        self.call(id, name, args)
+    }
+
+    fn r#if(
+        &mut self,
+        id: Id,
+        condition: &Expr,
+        block: &Expr,
+        r#else: Option<(Id, &Expr)>,
+    ) -> Self::Out {
+        self.r#if(id, condition, block, r#else.map(|(_, expr)| expr))
+    }
+
+    fn expr_error(&mut self, id: Id) -> Self::Out {
+        self.expr_error(id)
+    }
+}
+
+impl Expr {
+    // Uses ExprIdGetter to make sure we always use
+    // a correct "main" id
+    pub fn get_id(&self) -> Id {
+        ExprIdGetter.visit_expr(self)
+    }
+}
+
+struct ExprIdGetter;
+
+impl ExprVisitorSimple for ExprIdGetter {
+    type Out = Id;
+
+    fn binary(&mut self, id: Id, _kind: BinOpKind, _left: &Expr, _right: &Expr) -> Self::Out {
+        id
+    }
+
+    fn r#let(&mut self, id: Id, r#_mut: bool, _name: Name, _expr: &Expr) -> Self::Out {
+        id
+    }
+
+    fn access(&mut self, id: Id, _expr: &Expr, _access: &[AccessType]) -> Self::Out {
+        id
+    }
+
+    fn assign(&mut self, id: Id, _left: &Expr, _access: &[AccessType], _right: &Expr) -> Self::Out {
+        id
+    }
+
+    fn identifier(&mut self, name: Name) -> Self::Out {
+        name.id
+    }
+
+    fn float(&mut self, id: Id, _f: f32) -> Self::Out {
+        id
+    }
+
+    fn int(&mut self, id: Id, _i: i32) -> Self::Out {
+        id
+    }
+
+    fn block(&mut self, id: Id, _exprs: &[Expr]) -> Self::Out {
+        id
+    }
+
+    fn convert(&mut self, id: Id, _expr: &Expr, r#_type: Name) -> Self::Out {
+        id
+    }
+
+    fn call(&mut self, id: Id, _name: Name, _args: &[Expr]) -> Self::Out {
+        id
+    }
+
+    fn r#if(
+        &mut self,
+        id: Id,
+        _condition: &Expr,
+        _block: &Expr,
+        r#_else: Option<&Expr>,
+    ) -> Self::Out {
+        id
+    }
+
+    fn expr_error(&mut self, id: Id) -> Self::Out {
+        id
+    }
 }

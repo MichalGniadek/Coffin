@@ -8,7 +8,7 @@ use crate::{
     error::{internal_error, CoffinError, InternalError},
     lexer::Token,
     name_resolution::NameTable,
-    type_id::{builtin_types, TypeId},
+    type_id::{builtin, TypeId},
     type_resolution::types::{Type, TypeTable},
 };
 use lasso::RodeoReader;
@@ -298,12 +298,12 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
                 self.code.s_rem(spirv_type, None, left, right)
             }
             (Type::Vector(_, _), BinOpKind::Add, Type::Vector(_, inner))
-                if *inner == builtin_types::INT_ID =>
+                if *inner == builtin::INT_ID =>
             {
                 self.code.i_add(spirv_type, None, left, right)
             }
             (Type::Vector(_, _), BinOpKind::Sub, Type::Vector(_, inner))
-                if *inner == builtin_types::INT_ID =>
+                if *inner == builtin::INT_ID =>
             {
                 self.code.i_sub(spirv_type, None, left, right)
             }
@@ -323,12 +323,12 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
                 self.code.f_rem(spirv_type, None, left, right)
             }
             (Type::Vector(_, _), BinOpKind::Add, Type::Vector(_, inner))
-                if *inner == builtin_types::FLOAT_ID =>
+                if *inner == builtin::FLOAT_ID =>
             {
                 self.code.f_add(spirv_type, None, left, right)
             }
             (Type::Vector(_, _), BinOpKind::Sub, Type::Vector(_, inner))
-                if *inner == builtin_types::FLOAT_ID =>
+                if *inner == builtin::FLOAT_ID =>
             {
                 self.code.f_sub(spirv_type, None, left, right)
             }
@@ -451,13 +451,13 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
         match (type_before, type_after) {
             (Type::Int, Type::Float) => self.code.convert_s_to_f(spirv_type_id, None, expr_id),
             (Type::UInt, Type::Float) => self.code.convert_u_to_f(spirv_type_id, None, expr_id),
-            (Type::Vector(_, builtin_types::INT_ID), Type::Vector(_, builtin_types::FLOAT_ID)) => {
+            (Type::Vector(_, builtin::INT_ID), Type::Vector(_, builtin::FLOAT_ID)) => {
                 self.code.convert_s_to_f(spirv_type_id, None, expr_id)
             }
-            (Type::Vector(_, builtin_types::UINT_ID), Type::Vector(_, builtin_types::FLOAT_ID)) => {
+            (Type::Vector(_, builtin::UINT_ID), Type::Vector(_, builtin::FLOAT_ID)) => {
                 self.code.convert_u_to_f(spirv_type_id, None, expr_id)
             }
-            (Type::Vector(_, builtin_types::UINT_ID), Type::Vector(_, builtin_types::INT_ID)) => {
+            (Type::Vector(_, builtin::UINT_ID), Type::Vector(_, builtin::INT_ID)) => {
                 self.code.bitcast(spirv_type_id, None, expr_id)
             }
             _ => todo!("Conversion error."),

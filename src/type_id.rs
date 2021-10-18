@@ -16,7 +16,7 @@ impl TypeId {
 
 impl Default for TypeId {
     fn default() -> Self {
-        builtin_types::MAX_TYPE_ID
+        builtin::MAX_TYPE_ID
     }
 }
 
@@ -26,7 +26,7 @@ impl From<TypeId> for usize {
     }
 }
 
-pub mod builtin_types {
+pub mod builtin {
     use super::TypeId;
 
     pub const ERROR_ID: TypeId = TypeId(0);

@@ -10,7 +10,7 @@ use crate::{
     error::{CoffinError, InternalError},
     name_resolution::NameTable,
     parser::spans_table::SpanTable,
-    type_id::{builtin_types, TypeId},
+    type_id::{builtin, TypeId},
     type_resolution::types::FunType,
 };
 use ast::AccessType;
@@ -53,38 +53,42 @@ impl TypeResolution<'_, '_> {
                         Type::Vector(members, vec_type) => {
                             if i != access.len() - 1 {
                                 self.errors.push(CoffinError::SwizzleNotAtTheEnd(
-                                    self.spans[member.id].clone(),
+                                    self.spans.get(member.id),
                                 ));
-                                return builtin_types::ERROR_ID;
+                                return builtin::ERROR_ID;
                             }
 
                             let member_str = self.rodeo.resolve(&member.spur);
 
                             if member_str.chars().all(|c| members.contains(&c)) {
-                                if member_str.chars().count() == 1 {
-                                    type_id = *vec_type
-                                } else if vec_type == &builtin_types::INT_ID {
-                                    type_id = builtin_types::IVEC_ID[member_str.chars().count()]
-                                } else if vec_type == &builtin_types::FLOAT_ID {
-                                    type_id = builtin_types::FVEC_ID[member_str.chars().count()]
-                                } else if vec_type == &builtin_types::UINT_ID {
-                                    type_id = builtin_types::UVEC_ID[member_str.chars().count()]
+                                type_id = if member_str.chars().count() == 1 {
+                                    *vec_type
                                 } else {
-                                    todo!()
-                                }
+                                    match *vec_type {
+                                        builtin::INT_ID => {
+                                            builtin::IVEC_ID[member_str.chars().count()]
+                                        }
+                                        builtin::FLOAT_ID => {
+                                            builtin::FVEC_ID[member_str.chars().count()]
+                                        }
+                                        builtin::UINT_ID => {
+                                            builtin::UVEC_ID[member_str.chars().count()]
+                                        }
+                                        _ => todo!(),
+                                    }
+                                };
                             } else {
                                 self.errors.push(CoffinError::IncorrectVectorFields(
-                                    self.spans[member.id].clone(),
+                                    self.spans.get(member.id),
                                 ));
-                                return builtin_types::ERROR_ID;
+                                return builtin::ERROR_ID;
                             }
                         }
 
                         _ => {
-                            self.errors.push(CoffinError::TypeDoesntHaveFields(
-                                self.spans[member.id].clone(),
-                            ));
-                            return builtin_types::ERROR_ID;
+                            self.errors
+                                .push(CoffinError::TypeDoesntHaveFields(self.spans.get(member.id)));
+                            return builtin::ERROR_ID;
                         }
                     };
                     self.types.set_type_id(*id, type_id);
@@ -94,33 +98,33 @@ impl TypeResolution<'_, '_> {
 
                     match &self.types[type_id] {
                         &Type::Vector(_, vec_type) => {
-                            if expr_type == builtin_types::INT_ID {
+                            if expr_type == builtin::INT_ID {
                                 type_id = vec_type;
                             } else {
                                 self.errors.push(CoffinError::MismatchedType {
                                     span: ast_span::get_expr_span(expr, self.spans),
-                                    expected: self.types[builtin_types::INT_ID].to_string(),
+                                    expected: self.types[builtin::INT_ID].to_string(),
                                     got: self.types[expr_type].to_string(),
                                 });
-                                return builtin_types::ERROR_ID;
+                                return builtin::ERROR_ID;
                             }
                         }
                         Type::Image() => {
-                            if expr_type != builtin_types::IVEC_ID[2] {
+                            if expr_type != builtin::IVEC_ID[2] {
                                 self.errors.push(CoffinError::MismatchedType {
                                     span: ast_span::get_expr_span(expr, self.spans),
-                                    expected: self.types[builtin_types::IVEC_ID[2]].to_string(),
+                                    expected: self.types[builtin::IVEC_ID[2]].to_string(),
                                     got: self.types[expr_type].to_string(),
                                 });
-                                return builtin_types::ERROR_ID;
+                                return builtin::ERROR_ID;
                             } else {
-                                type_id = builtin_types::FVEC_ID[4];
+                                type_id = builtin::FVEC_ID[4];
                             }
                         }
                         _ => {
                             self.errors
-                                .push(CoffinError::TypeCantBeIndexed(self.spans[*id].clone()));
-                            return builtin_types::ERROR_ID;
+                                .push(CoffinError::TypeCantBeIndexed(self.spans.get(*id)));
+                            return builtin::ERROR_ID;
                         }
                     };
                     self.types.set_type_id(*id, type_id);
@@ -150,7 +154,7 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
                 let type_id = self
                     .names
                     .type_id(param.r#type)
-                    .unwrap_or(builtin_types::ERROR_ID);
+                    .unwrap_or(builtin::ERROR_ID);
                 param_types.push(type_id);
 
                 if let Some(var_id) = self.names.var_id(param.name) {
@@ -162,8 +166,7 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
             if params.len() != 1 {
                 self.errors.push(
                     CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
-                        self.spans[params[1].name.id].start
-                            ..self.spans[params.last().unwrap().r#type.id].end,
+                        self.spans.get(name.id),
                     ),
                 );
                 return;
@@ -173,11 +176,12 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
             let type_id = self
                 .names
                 .type_id(id_param.r#type)
-                .unwrap_or(builtin_types::ERROR_ID);
-            if type_id != builtin_types::ID_ID {
+                .unwrap_or(builtin::ERROR_ID);
+
+            if type_id != builtin::ID_ID {
                 self.errors.push(
                     CoffinError::ComputeFunctionMustHaveOnlyOneParameterOfTypeId(
-                        self.spans[id_param.r#type.id].clone(),
+                        self.spans.get(id_param.r#type.id),
                     ),
                 );
                 return;
@@ -190,17 +194,14 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
         } else if compute.len() > 1 {
             self.errors.push(CoffinError::MoreThanOneAttribute(
                 "compute".into(),
-                self.spans[compute[1].0.id].clone(),
+                self.spans.get(compute[1].0.id),
             ));
             return;
         }
 
         let return_type = match ret {
-            Some(r#type) => self
-                .names
-                .type_id(r#type)
-                .unwrap_or(builtin_types::ERROR_ID),
-            None => builtin_types::UNIT_ID,
+            Some(r#type) => self.names.type_id(r#type).unwrap_or(builtin::ERROR_ID),
+            None => builtin::UNIT_ID,
         };
 
         let type_id = self
@@ -224,18 +225,17 @@ impl ItemVisitorSimple for TypeResolution<'_, '_> {
         let type_id = self
             .names
             .type_id(field.r#type)
-            .unwrap_or(builtin_types::ERROR_ID);
+            .unwrap_or(builtin::ERROR_ID);
         if let Some(var_id) = self.names.var_id(field.name) {
             self.types
                 .set_var_type_id(var_id, type_id, StorageClass::UniformConstant);
         }
 
-        self.types
-            .set_type_id(field.name.id, builtin_types::UNIT_ID);
+        self.types.set_type_id(field.name.id, builtin::UNIT_ID);
     }
 
     fn item_error(&mut self, id: Id) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::ERROR_ID);
+        self.types.set_type_id(id, builtin::ERROR_ID);
     }
 }
 
@@ -250,15 +250,15 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
         let right_type = &self.types[right_id];
 
         let type_id = match (left_type, kind, right_type) {
-            (Type::Int, _, Type::Int) => builtin_types::INT_ID,
-            (Type::Float, _, Type::Float) => builtin_types::FLOAT_ID,
+            (Type::Int, _, Type::Int) => builtin::INT_ID,
+            (Type::Float, _, Type::Float) => builtin::FLOAT_ID,
             (Type::Vector(vl, tl), BinOpKind::Add | BinOpKind::Sub, Type::Vector(vr, tr))
                 if vl.len() == vr.len() && tr == tl =>
             {
                 left_id
             }
-            (Type::Error, _, _) => builtin_types::ERROR_ID,
-            (_, _, Type::Error) => builtin_types::ERROR_ID,
+            (Type::Error, _, _) => builtin::ERROR_ID,
+            (_, _, Type::Error) => builtin::ERROR_ID,
             _ => {
                 let left_span = ast_span::get_expr_span(left, self.spans);
                 let right_span = ast_span::get_expr_span(right, self.spans);
@@ -271,7 +271,7 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
                     right_type: format!("{}", right_type),
                 });
 
-                builtin_types::ERROR_ID
+                builtin::ERROR_ID
             }
         };
 
@@ -285,7 +285,7 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
                 .set_var_type_id(var_id, type_id, StorageClass::Function);
         }
 
-        self.types.set_type_id(id, builtin_types::UNIT_ID)
+        self.types.set_type_id(id, builtin::UNIT_ID)
     }
 
     fn access(&mut self, id: Id, expr: &Expr, access: &[AccessType]) -> Self::Out {
@@ -300,8 +300,8 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
         let var_type_id = self.access_type(access, var_type_id);
 
         if var_type_id != expr_type_id
-            && expr_type_id != builtin_types::ERROR_ID
-            && var_type_id != builtin_types::ERROR_ID
+            && expr_type_id != builtin::ERROR_ID
+            && var_type_id != builtin::ERROR_ID
         {
             let span = ast_span::get_expr_span(right, self.spans);
             self.errors.push(CoffinError::MismatchedType {
@@ -311,7 +311,7 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
             });
         }
 
-        self.types.set_type_id(id, builtin_types::UNIT_ID)
+        self.types.set_type_id(id, builtin::UNIT_ID)
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
@@ -319,32 +319,29 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
             let (type_id, _) = self.types.var_type_id(var_id);
             self.types.set_type_id(name.id, type_id)
         } else {
-            builtin_types::ERROR_ID
+            builtin::ERROR_ID
         }
     }
 
     fn float(&mut self, id: Id, _f: f32) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::FLOAT_ID)
+        self.types.set_type_id(id, builtin::FLOAT_ID)
     }
 
     fn int(&mut self, id: Id, _i: i32) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::INT_ID)
+        self.types.set_type_id(id, builtin::INT_ID)
     }
 
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
         let type_id = match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(expr_id) => expr_id,
-            None => builtin_types::UNIT_ID,
+            None => builtin::UNIT_ID,
         };
         self.types.set_type_id(id, type_id)
     }
 
     fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out {
         let expr_id = self.visit_expr(expr);
-        let type_id = self
-            .names
-            .type_id(r#type)
-            .unwrap_or(builtin_types::ERROR_ID);
+        let type_id = self.names.type_id(r#type).unwrap_or(builtin::ERROR_ID);
 
         let expr_type = &self.types[expr_id];
         let after_type = &self.types[type_id];
@@ -395,10 +392,10 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
         _block: &Expr,
         r#_else: Option<&Expr>,
     ) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::UNIT_ID)
+        self.types.set_type_id(id, builtin::UNIT_ID)
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {
-        self.types.set_type_id(id, builtin_types::ERROR_ID)
+        self.types.set_type_id(id, builtin::ERROR_ID)
     }
 }

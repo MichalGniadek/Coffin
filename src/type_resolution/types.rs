@@ -63,7 +63,7 @@ pub struct TypeTable {
 
 impl TypeTable {
     pub fn new(ast: &Ast, names: &NameTable) -> Self {
-        use crate::type_id::builtin_types::*;
+        use crate::type_id::builtin::*;
         let mut slf = Self {
             types: vec![Type::Error; usize::from(names.max_type_id())],
             max_type_id: names.max_type_id(),

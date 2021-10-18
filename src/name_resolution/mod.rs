@@ -50,15 +50,15 @@ impl<T> Scopes<T> {
         self.0.last_mut().ice_expect("No scope").insert(name, id);
     }
 
-    fn find(&self, name: Spur) -> Option<&T> {
-        self.0.iter().rev().find_map(|scope| scope.get(&name))
+    fn find(&self, name: Name) -> Option<&T> {
+        self.0.iter().rev().find_map(|scope| scope.get(&name.spur))
     }
 }
 
 impl Scopes<TypeId> {
     fn new_with_builtin_types(rodeo: &RodeoReader) -> Self {
         let mut slf = Self::new();
-        use crate::type_id::builtin_types::*;
+        use crate::type_id::builtin::*;
         for (name, id) in [
             ("void", UNIT_ID),
             ("int", INT_ID),
@@ -98,15 +98,15 @@ struct NameResolution<'ast> {
 
 impl NameResolution<'_> {
     fn new_variable(&mut self, name: Name) {
-        let var_id = self.names.new_variable();
-        self.names.set_var(name, var_id);
-        self.var_scope.insert(name.spur, var_id);
+        let var = self.names.new_variable();
+        self.names.set_var(name, var);
+        self.var_scope.insert(name.spur, var);
     }
 
     fn _new_type(&mut self, name: Name) {
-        let type_id = self.names._new_type();
-        self.names.set_type(name, type_id);
-        self.type_scope.insert(name.spur, type_id);
+        let r#type = self.names._new_type();
+        self.names.set_type(name, r#type);
+        self.type_scope.insert(name.spur, r#type);
     }
 }
 
@@ -127,20 +127,20 @@ impl ItemVisitorSimple for NameResolution<'_> {
         for param in params {
             self.new_variable(param.name);
 
-            match self.type_scope.find(param.r#type.spur) {
+            match self.type_scope.find(param.r#type) {
                 Some(type_id) => self.names.set_type(param.r#type, *type_id),
-                None => self.errors.push(CoffinError::UndeclaredType(
-                    self.spans[param.r#type.id].clone(),
-                )),
+                None => self
+                    .errors
+                    .push(CoffinError::UndeclaredType(self.spans.get(param.r#type.id))),
             }
         }
 
         if let Some(name) = ret {
-            match self.type_scope.find(name.spur) {
+            match self.type_scope.find(name) {
                 Some(type_id) => self.names.set_type(name, *type_id),
                 None => self
                     .errors
-                    .push(CoffinError::UndeclaredType(self.spans[name.id].clone())),
+                    .push(CoffinError::UndeclaredType(self.spans.get(name.id))),
             }
         }
 
@@ -151,11 +151,11 @@ impl ItemVisitorSimple for NameResolution<'_> {
     fn uniform(&mut self, _attrs: &Attrs, field: &Field) -> Self::Out {
         self.new_variable(field.name);
 
-        match self.type_scope.find(field.r#type.spur) {
+        match self.type_scope.find(field.r#type) {
             Some(type_id) => self.names.set_type(field.r#type, *type_id),
-            None => self.errors.push(CoffinError::UndeclaredType(
-                self.spans[field.r#type.id].clone(),
-            )),
+            None => self
+                .errors
+                .push(CoffinError::UndeclaredType(self.spans.get(field.r#type.id))),
         }
     }
 
@@ -199,11 +199,11 @@ impl ExprVisitorSimple for NameResolution<'_> {
     }
 
     fn identifier(&mut self, name: Name) -> Self::Out {
-        match self.var_scope.find(name.spur) {
+        match self.var_scope.find(name) {
             Some(&var_id) => self.names.set_var(name, var_id),
             None => {
                 self.errors
-                    .push(CoffinError::UndeclaredVariable(self.spans[name.id].clone()));
+                    .push(CoffinError::UndeclaredVariable(self.spans.get(name.id)));
                 self.new_variable(name)
             }
         }
@@ -223,18 +223,18 @@ impl ExprVisitorSimple for NameResolution<'_> {
     fn convert(&mut self, _id: Id, expr: &Expr, r#type: Name) -> Self::Out {
         self.visit_expr(expr);
 
-        match self.type_scope.find(r#type.spur) {
+        match self.type_scope.find(r#type) {
             Some(type_id) => self.names.set_type(r#type, *type_id),
             None => self
                 .errors
-                .push(CoffinError::UndeclaredType(self.spans[r#type.id].clone())),
+                .push(CoffinError::UndeclaredType(self.spans.get(r#type.id))),
         }
     }
 
     fn call(&mut self, _id: Id, name: Name, args: &[Expr]) -> Self::Out {
-        if let Some(var_id) = self.var_scope.find(name.spur) {
+        if let Some(var_id) = self.var_scope.find(name) {
             self.names.set_var(name, *var_id);
-        } else if let Some(type_id) = self.type_scope.find(name.spur) {
+        } else if let Some(type_id) = self.type_scope.find(name) {
             self.names.set_type(name, *type_id);
         } else {
             todo!("Error")

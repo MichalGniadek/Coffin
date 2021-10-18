@@ -15,6 +15,10 @@ impl SpanTable {
         Id::new(self.0.len() as usize - 1)
     }
 
+    pub fn get(&self, id: Id) -> Span {
+        self[id].clone()
+    }
+
     pub fn max_id(&self) -> Id {
         Id::new(self.0.len())
     }

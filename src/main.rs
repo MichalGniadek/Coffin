@@ -53,8 +53,7 @@ fn main() {
         }
     };
 
-    let lexer = lexer::lex(&src);
-    let mut ast = parser::parse(lexer);
+    let mut ast = parser::parse(lexer::lex(&src));
     let variables = name_resolution::visit(&mut ast);
     let types = type_resolution::visit(&mut ast, &variables);
 
@@ -65,22 +64,14 @@ fn main() {
         );
     }
 
-    let module = if !ast.errors.is_empty() {
-        let file = SimpleFile::new(
-            opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
-            src,
-        );
-        exit_with_errors(&file, &ast.errors);
-    } else {
-        match spirv_generation::visit(&mut ast, &variables, &types) {
-            Ok(module) => module,
-            Err(_) => {
-                let file = SimpleFile::new(
-                    opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
-                    src,
-                );
-                exit_with_errors(&file, &ast.errors);
-            }
+    let module = match spirv_generation::visit(&mut ast, &variables, &types) {
+        Ok(module) => module,
+        Err(err) => {
+            let file = SimpleFile::new(
+                opt.input.to_str().unwrap_or("<Path is not valid UTF-8>"),
+                src,
+            );
+            exit_with_errors(&file, &err);
         }
     };
 
@@ -91,10 +82,7 @@ fn main() {
     let code = module.assemble();
     if opt.validate {
         if let Err(err) = validate_spirv(&code) {
-            println!(
-                "Internal compiler validator error, this is a bug please report it.\n{}",
-                err
-            );
+            println!("Validator error: {}", err);
         }
     }
 }

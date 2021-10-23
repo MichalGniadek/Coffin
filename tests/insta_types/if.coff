@@ -1,0 +1,23 @@
+fun asd(){
+    if true {
+        123
+    }
+
+    if true {
+        123.0
+    } else {
+        234.0
+    }
+
+    if 123 {
+        true
+    } else {
+        false
+    }
+
+    if true {
+        123
+    } else {
+        123.0
+    }
+}

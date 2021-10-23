@@ -389,14 +389,35 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
         }
     }
 
-    fn r#if(
-        &mut self,
-        id: Id,
-        _condition: &Expr,
-        _block: &Expr,
-        r#_else: Option<&Expr>,
-    ) -> Self::Out {
-        self.types.set_type_id(id, builtin::UNIT_ID)
+    fn r#if(&mut self, id: Id, condition: &Expr, block: &Expr, r#else: Option<&Expr>) -> Self::Out {
+        let condition_type = self.visit_expr(condition);
+        let block_type = self.visit_expr(block);
+        let r#else_type = r#else.map(|e| self.visit_expr(e));
+        if condition_type != builtin::BOOL_ID {
+            self.errors.push(CoffinError::ConditionIsntABool(
+                ast_span::get_expr_span(condition, self.spans),
+                self.types[condition_type].to_string(),
+            ));
+            self.types.set_type_id(id, builtin::ERROR_ID)
+        } else {
+            match (block_type, r#else_type) {
+                (_, None) => self.types.set_type_id(id, builtin::UNIT_ID),
+                (t1, Some(t2)) if t1 == t2 => self.types.set_type_id(id, t1),
+                (a, Some(b)) => {
+                    self.errors
+                        .push(CoffinError::IfAndElseHaveIncompatibleTypes {
+                            left_span: ast_span::get_expr_span(block, self.spans),
+                            left_type: self.types[a].to_string(),
+                            right_span: ast_span::get_expr_span(
+                                r#else.expect("We already matched on a mapped value."),
+                                self.spans,
+                            ),
+                            right_type: self.types[b].to_string(),
+                        });
+                    self.types.set_type_id(id, builtin::ERROR_ID)
+                }
+            }
+        }
     }
 
     fn expr_error(&mut self, id: Id) -> Self::Out {

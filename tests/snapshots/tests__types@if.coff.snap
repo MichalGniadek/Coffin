@@ -1,0 +1,29 @@
+---
+source: tests/tests.rs
+expression: "test_util(path, false, false, true)"
+
+---
+fun asd@0 ()  {
+	(if #true: bool {
+		#123: int
+	}: int): unit
+	(if #true: bool {
+		#123: float
+	}: float else {
+		#234: float
+	}: float): float
+	(if #123: int {
+		#true: bool
+	}: bool else {
+		#false: bool
+	}: bool): error
+	(if #true: bool {
+		#123: int
+	}: int else {
+		#123: float
+	}: float): error
+}: error
+
+===
+Condition doesn't have a bool type. Instead got: int [124..127]
+If and else have incompatible types.

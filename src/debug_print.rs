@@ -301,7 +301,7 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         r#else: Option<(Id, &Expr)>,
     ) -> Self::Out {
         format!(
-            "({}if {} {}{})",
+            "({}if {} {}{}){}",
             self.span(id),
             self.visit_expr(condition),
             self.visit_expr(block),
@@ -309,7 +309,8 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
                 format!(" {}else {}", self.span(id), self.visit_expr(r#else))
             } else {
                 String::new()
-            }
+            },
+            self.r#type(id),
         )
     }
 

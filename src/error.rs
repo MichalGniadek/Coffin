@@ -27,6 +27,13 @@ pub enum CoffinError {
     },
     ComputeFunctionMustHaveOnlyOneParameterOfTypeId(Span),
     MoreThanOneAttribute(String, Span),
+    ConditionIsntABool(Span, String),
+    IfAndElseHaveIncompatibleTypes {
+        left_span: Span,
+        left_type: String,
+        right_span: Span,
+        right_type: String,
+    },
 
     SwizzleNotAtTheEnd(Span),
     TypeDoesntHaveFields(Span),
@@ -95,6 +102,27 @@ impl CoffinError {
                 msg: format!("More than one {} attribute", string),
                 main_span: Some(span),
                 labels: vec![("here".into(), span)],
+            },
+            CoffinError::ConditionIsntABool(span, r#type) => ErrorMessage {
+                msg: format!(
+                    "Condition doesn't have a bool type. Instead got: {}",
+                    r#type
+                ),
+                main_span: Some(span),
+                labels: vec![],
+            },
+            CoffinError::IfAndElseHaveIncompatibleTypes {
+                left_span,
+                left_type,
+                right_span,
+                right_type,
+            } => ErrorMessage {
+                msg: format!("If and else have incompatible types."),
+                main_span: None,
+                labels: vec![
+                    (left_type.clone(), left_span),
+                    (right_type.clone(), right_span),
+                ],
             },
             CoffinError::SwizzleNotAtTheEnd(span) => ErrorMessage {
                 msg: "Swizzle not at the end.".into(),

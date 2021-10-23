@@ -94,6 +94,10 @@ impl ExprVisitor for SpanGetter<'_> {
         self.0[id].clone()
     }
 
+    fn bool(&mut self, id: Id, _b: bool) -> Self::Out {
+        self.0[id].clone()
+    }
+
     fn block(&mut self, id: Id, _exprs: &[Expr]) -> Self::Out {
         self.0[id].clone()
     }

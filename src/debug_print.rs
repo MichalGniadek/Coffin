@@ -244,6 +244,10 @@ impl ExprVisitor for DebugPrint<'_, '_, '_> {
         format!("{}#{}{}", self.span(id), i, self.r#type(id))
     }
 
+    fn bool(&mut self, id: Id, b: bool) -> Self::Out {
+        format!("{}#{}{}", self.span(id), b, self.r#type(id))
+    }
+
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
         self.indent.push('\t');
         let indent = self.indent.clone();

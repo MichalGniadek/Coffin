@@ -33,6 +33,7 @@ pub enum Type {
     Int,
     UInt,
     Float,
+    Bool,
     Image(/* TODO */),
     Fun(FunType),
     Vector(Vec<char>, TypeId),
@@ -46,6 +47,7 @@ impl Display for Type {
             Type::Int => write!(f, "int"),
             Type::UInt => write!(f, "uint"),
             Type::Float => write!(f, "float"),
+            Type::Bool => write!(f, "bool"),
             Type::Image() => write!(f, "image"),
             Type::Fun(_) => write!(f, "fun"),
             Type::Vector(_, _) => write!(f, "vector"),
@@ -77,6 +79,7 @@ impl TypeTable {
         slf.set_type(UINT_ID, Type::UInt);
         slf.set_type(FLOAT_ID, Type::Float);
         slf.set_type(IMAGE_ID, Type::Image());
+        slf.set_type(BOOL_ID, Type::Bool);
 
         let a = ['x', 'y', 'z', 'w'];
         for i in 1..=4 {

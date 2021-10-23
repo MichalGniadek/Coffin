@@ -134,6 +134,7 @@ pub enum Expr {
     Identifier(Name),
     Float(Id, f32),
     Int(Id, i32),
+    Bool(Id, bool),
     Block(Id, Vec<Expr>),
     Convert(Id, Box<Expr>, Name),
     Call(Id, Name, Vec<Expr>),
@@ -248,6 +249,7 @@ pub trait ExprVisitor {
             Expr::Identifier(name) => self.identifier(*name),
             Expr::Float(id, f) => self.float(*id, *f),
             Expr::Int(id, i) => self.int(*id, *i),
+            Expr::Bool(id, bool) => self.bool(*id, *bool),
             Expr::Block(id, exprs) => self.block(*id, exprs),
             Expr::Convert(id, expr, r#type) => self.convert(*id, expr, *r#type),
             Expr::Call(id, name, args) => self.call(*id, *name, args),
@@ -275,6 +277,7 @@ pub trait ExprVisitor {
     fn identifier(&mut self, name: Name) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
+    fn bool(&mut self, id: Id, b: bool) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out;
     fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out;
     fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out;
@@ -298,6 +301,7 @@ pub trait ExprVisitorSimple {
     fn identifier(&mut self, name: Name) -> Self::Out;
     fn float(&mut self, id: Id, f: f32) -> Self::Out;
     fn int(&mut self, id: Id, i: i32) -> Self::Out;
+    fn bool(&mut self, id: Id, b: bool) -> Self::Out;
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out;
     fn convert(&mut self, id: Id, expr: &Expr, r#type: Name) -> Self::Out;
     fn call(&mut self, id: Id, name: Name, args: &[Expr]) -> Self::Out;
@@ -341,6 +345,10 @@ impl<V: ExprVisitorSimple> ExprVisitor for V {
 
     fn int(&mut self, id: Id, i: i32) -> Self::Out {
         self.int(id, i)
+    }
+
+    fn bool(&mut self, id: Id, b: bool) -> Self::Out {
+        self.bool(id, b)
     }
 
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
@@ -408,6 +416,10 @@ impl ExprVisitorSimple for ExprIdGetter {
     }
 
     fn int(&mut self, id: Id, _i: i32) -> Self::Out {
+        id
+    }
+
+    fn bool(&mut self, id: Id, _b: bool) -> Self::Out {
         id
     }
 

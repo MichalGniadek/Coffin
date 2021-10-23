@@ -211,6 +211,7 @@ impl ExprVisitorSimple for NameResolution<'_> {
 
     fn float(&mut self, _id: Id, _f: f32) -> Self::Out {}
     fn int(&mut self, _id: Id, _i: i32) -> Self::Out {}
+    fn bool(&mut self, _id: Id, _b: bool) -> Self::Out {}
 
     fn block(&mut self, _id: Id, exprs: &[Expr]) -> Self::Out {
         self.var_scope.push();

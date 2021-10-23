@@ -53,6 +53,8 @@ impl Parser<'_> {
         match self.curr_token {
             Token::Int(i) => Correct(Expr::Int(self.consume(), i)),
             Token::Float(f) => Correct(Expr::Float(self.consume(), f)),
+            Token::True => Correct(Expr::Bool(self.consume(), true)),
+            Token::False => Correct(Expr::Bool(self.consume(), false)),
             Token::Identifier(spur) => Correct(Expr::Identifier(Name {
                 id: self.consume(),
                 spur,

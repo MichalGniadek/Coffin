@@ -43,5 +43,7 @@ pub mod builtin {
 
     pub const IMAGE_ID: TypeId = TypeId(17);
 
-    pub(super) const MAX_TYPE_ID: TypeId = TypeId(18);
+    pub const BOOL_ID: TypeId = TypeId(18);
+
+    pub(super) const MAX_TYPE_ID: TypeId = TypeId(19);
 }

@@ -331,6 +331,10 @@ impl ExprVisitorSimple for TypeResolution<'_, '_> {
         self.types.set_type_id(id, builtin::INT_ID)
     }
 
+    fn bool(&mut self, id: Id, _b: bool) -> Self::Out {
+        self.types.set_type_id(id, builtin::BOOL_ID)
+    }
+
     fn block(&mut self, id: Id, exprs: &[Expr]) -> Self::Out {
         let type_id = match exprs.iter().map(|e| self.visit_expr(e)).last() {
             Some(expr_id) => expr_id,

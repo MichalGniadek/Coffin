@@ -101,6 +101,7 @@ impl SpirvGen<'_, '_, '_> {
                 Type::Int => self.code.type_int(32, 1),
                 Type::UInt => self.code.type_int(32, 0),
                 Type::Float => self.code.type_float(32),
+                Type::Bool => self.code.type_bool(),
                 Type::Image() => {
                     let float_id = self.code.type_float(32);
                     self.code.type_image(
@@ -429,6 +430,15 @@ impl ExprVisitorSimple for SpirvGen<'_, '_, '_> {
     fn int(&mut self, id: Id, i: i32) -> Self::Out {
         let type_id = self.spirv_type_id(self.types.type_id(id), None);
         Ok(self.code.constant_u32(type_id, i as u32))
+    }
+
+    fn bool(&mut self, id: Id, b: bool) -> Self::Out {
+        let type_id = self.spirv_type_id(self.types.type_id(id), None);
+        if b {
+            Ok(self.code.constant_true(type_id))
+        } else {
+            Ok(self.code.constant_false(type_id))
+        }
     }
 
     fn block(&mut self, _id: Id, exprs: &[Expr]) -> Self::Out {
